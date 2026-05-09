@@ -8,11 +8,27 @@
 
 [CmdletBinding()]
 param(
-    [string]$NtUserDir = "$env:USERPROFILE\Documents\NinjaTrader 8",
+    [string]$NtUserDir,
     [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Resolve NT8 user dir. The default user-supplied path wins; otherwise try
+# the system Documents folder (which respects Parallels / OneDrive
+# redirections), then fall back to $env:USERPROFILE\Documents.
+if (-not $NtUserDir) {
+    $myDocs = [Environment]::GetFolderPath('MyDocuments')
+    $candidates = @(
+        (Join-Path $myDocs 'NinjaTrader 8'),
+        (Join-Path "$env:USERPROFILE\Documents" 'NinjaTrader 8'),
+        (Join-Path "$env:USERPROFILE\OneDrive\Documents" 'NinjaTrader 8')
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { $NtUserDir = $c; break }
+    }
+    if (-not $NtUserDir) { $NtUserDir = $candidates[0] }
+}
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 $srcAddOns = Join-Path $repoRoot 'csharp\AddOns'
