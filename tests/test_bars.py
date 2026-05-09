@@ -72,12 +72,6 @@ def test_60m_bar_open_and_close() -> None:
 
 
 def test_volume_and_count_aggregation() -> None:
-    bars = list(
-        build_bars(
-            [_t(0, 100, size=2), _t(1, 110, size=3), _t(2, 90, size=1)],
-            interval_ns=FIVE_MIN,
-        )
-    )
     builder = BarBuilder(FIVE_MIN)
     for t in [_t(0, 100, size=2), _t(1, 110, size=3), _t(2, 90, size=1)]:
         builder.push(t)

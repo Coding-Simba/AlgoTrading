@@ -52,7 +52,7 @@ def test_validate_clean(tmp_path: Path) -> None:
 def test_rules_hash_change_detected(tmp_path: Path) -> None:
     path = tmp_path / "reg.jsonl"
     reg = StrategyRegistry(path)
-    e = reg.append(
+    reg.append(
         strategy_version="v0.2",
         family="MES_intraday",
         rules={"entry": "B.7"},
