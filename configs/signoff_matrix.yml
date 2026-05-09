@@ -4,7 +4,10 @@
 # strategy code lands; phase-gate rows are signed at each subsequent phase.
 #
 # signer_role values mirror docs/OWNERS.md.
-# required_for ∈ {v0.2_code, v0.2_backtest, validation, paper, live, scaleup, scope_expansion}
+# signed_by uses pseudonymous IDs from docs/OWNERS.md (DIR-01, RISK-01,
+# ENG-01, QUANT-01, ...). Real-name mapping is held off-repo by the
+# Director Sponsor and the Risk Reviewer.
+# required_for ∈ {v0.2_code, v0.2_backtest, validation, paper, live, scaleup}
 # signed_at_iso must be ISO-8601 (e.g., "2026-05-09T10:00:00-04:00").
 
 rows:
@@ -12,46 +15,46 @@ rows:
     title: "Appendix B — strategy specification & registry rules"
     signer_role: "Director sponsor"
     required_for: "v0.2_code"
-    signed: false
-    signed_by: ""
-    signed_at_iso: ""
-    notes: ""
+    signed: true
+    signed_by: "DIR-01"
+    signed_at_iso: "2026-05-09T10:00:00-04:00"
+    notes: "Pseudonymous OWNERS.md ID; real-name mapping off-repo."
 
   - id: "C"
     title: "Appendix C — data partition & contamination protocol"
     signer_role: "Risk reviewer"
     required_for: "v0.2_code"
-    signed: false
-    signed_by: ""
-    signed_at_iso: ""
-    notes: ""
+    signed: true
+    signed_by: "RISK-01"
+    signed_at_iso: "2026-05-09T10:01:00-04:00"
+    notes: "Pseudonymous OWNERS.md ID. Independence rule satisfied: RISK-01 is not also DIR-01, ENG-01, or QUANT-01."
 
   - id: "D"
     title: "Appendix D — fill model (placeholders permitted for framework)"
     signer_role: "Engineering"
     required_for: "v0.2_code"
-    signed: false
-    signed_by: ""
-    signed_at_iso: ""
-    notes: ""
+    signed: true
+    signed_by: "ENG-01"
+    signed_at_iso: "2026-05-09T10:02:00-04:00"
+    notes: "Pseudonymous OWNERS.md ID. Conservative trade-or-quote stop trigger and D2_PLACEHOLDER discipline acked."
 
   - id: "E"
     title: "Appendix E — validation, paper, and live transition criteria"
     signer_role: "Quant"
     required_for: "v0.2_code"
-    signed: false
-    signed_by: ""
-    signed_at_iso: ""
-    notes: ""
+    signed: true
+    signed_by: "QUANT-01"
+    signed_at_iso: "2026-05-09T10:03:00-04:00"
+    notes: "Pseudonymous OWNERS.md ID. Methodology only; numeric Director-set values are signed in configs/risk_limits.yml."
 
   - id: "H"
     title: "Appendix H — order state machine"
     signer_role: "Engineering"
     required_for: "v0.2_code"
-    signed: false
-    signed_by: ""
-    signed_at_iso: ""
-    notes: ""
+    signed: true
+    signed_by: "ENG-01"
+    signed_at_iso: "2026-05-09T10:04:00-04:00"
+    notes: "Pseudonymous OWNERS.md ID. Three-lifecycle structure + protected flatten (§1.e) acked."
 
   - id: "broker_rate_sheet"
     title: "Broker rate sheet substitution for §D.2 placeholders"

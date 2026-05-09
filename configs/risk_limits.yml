@@ -3,14 +3,18 @@
 # are populated. Editing locked values requires a Change Request countersigned
 # by the Risk Reviewer. Empty placeholders are rejected by the governance
 # guard (see src/algotrading/governance/risk_limits.py).
+#
+# Signer identifier `DIR-01` is the pseudonymous Director-Sponsor ID per
+# `docs/OWNERS.md`. The real-name mapping is held off-repo by the Director
+# Sponsor and the Risk Reviewer.
 
-allocated_capital_usd:                  # number, > 0 (USD)
-max_oos_drawdown_pct:                   # number, in (0, 100)  (% of allocated capital)
-max_acceptable_losing_streak:           # int, >= 1            (consecutive losing trades)
-daily_loss_limit_usd:                   # number, > 0          (USD per session)
-aggregate_program_drawdown_limit_pct:   # number, in (0, 100)  (% of allocated capital)
-risk_of_ruin_threshold_pct:             # number, in (0, 100)  (% probability ceiling)
+allocated_capital_usd: 1000                  # USD; small-account program.
+max_oos_drawdown_pct: 15                     # OOS-gate ceiling (≤ aggregate).
+max_acceptable_losing_streak: 5              # 5 × ~$25 R = $125 (< 20% × $1000 = $200).
+daily_loss_limit_usd: 90                     # < 20% × $1000 = $200 (aggregate $).
+aggregate_program_drawdown_limit_pct: 20     # program-level ceiling.
+risk_of_ruin_threshold_pct: 5                # ROR ceiling for the v0.2 family.
 
-signed_by: ""        # Director Sponsor identifier (must differ from Risk Reviewer)
-signed_at_iso: ""    # ISO-8601 timestamp, e.g., "2026-05-09T10:00:00-04:00"
-locked: false        # set to true only when Director Sponsor signs off.
+signed_by: "DIR-01"
+signed_at_iso: "2026-05-09T10:00:00-04:00"
+locked: true

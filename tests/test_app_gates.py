@@ -1,7 +1,9 @@
 """Gate-blocked tests for the runners and the live adapter.
 
-These exercise the *real* configs in the repo (which are unsigned) and
-confirm every dangerous path refuses by default. Synthetic paths must
+These exercise the *real* configs in the repo. B/C/D/E/H + risk_limits +
+partition lock are signed (v0.2_code ALLOWED). Every downstream
+dangerous path (OOS, holdback, paper, live, scaleup) still refuses by
+default because its own row remains unsigned. Synthetic paths must
 remain runnable.
 """
 
@@ -72,8 +74,14 @@ def test_scale_up_blocked_against_unsigned_repo() -> None:
         assert_scaleup_unblocked(ctx)
 
 
-def test_gate_summary_reports_every_gate_blocked_today() -> None:
+def test_gate_summary_v02_code_allowed_others_blocked() -> None:
+    """B/C/D/E/H + risk_limits + partition lock are signed, so v0.2_code is
+    ALLOWED. Every downstream gate (approved_backtest, oos, holdback, paper,
+    live, scaleup) remains BLOCKED on its own row (broker_rate_sheet,
+    validation_freeze, F, paper, G respectively)."""
     summary = gate_summary(GateContext.default(_REPO_ROOT))
-    for gate in ("v0.2_code", "approved_backtest", "oos", "holdback", "paper", "live", "scaleup"):
+
+    assert summary["v0.2_code"]["status"] == "ALLOWED", summary["v0.2_code"]
+    for gate in ("approved_backtest", "oos", "holdback", "paper", "live", "scaleup"):
         assert gate in summary
         assert summary[gate]["status"] == "BLOCKED", f"{gate} should be blocked: {summary[gate]}"

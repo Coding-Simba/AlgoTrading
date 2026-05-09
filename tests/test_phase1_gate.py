@@ -1,18 +1,21 @@
 """Phase 1 sign-off gate tests.
 
-Two contract checks for the v0.2_code gate:
+Three contract checks for the v0.2_code gate:
 
-1. Unsigned-state canary: against the *real* `configs/` files in the repo,
-   while any of the five pre-code sign-offs (B, C, D, E, H), the
-   Director-set risk limits, or the data-partition lock are blank, v0.2
-   strategy code is BLOCKED. Today this passes because the gates correctly
-   refuse. If a future edit silently flips a row to signed, the canary
-   forces the change to be reviewed.
+1. Real-config canary: against the *real* `configs/` files in the repo,
+   the three v0.2_code prerequisites (sign-off matrix B/C/D/E/H, risk
+   limits, partition lock) are signed/locked. The validation-freeze
+   guard remains BLOCKED because no `validation_freeze` event has been
+   appended to the contamination log yet (that gate is the *next* one
+   in sequence per docs/risk/validation_freeze_checklist.md). If any of
+   the three prerequisites is silently flipped back, this canary fails
+   loudly.
 
 2. Signed-state allow: with fixture configs that mirror a fully-signed
-   state, the same three guards return without raising. This proves the
-   gate transitions from BLOCKED to ALLOWED, rather than just refusing
-   forever.
+   state plus a freeze event, all four guards return without raising.
+
+3. Tamper canary: flipping a single appendix back to unsigned in the
+   fixture re-blocks the gate.
 """
 
 from __future__ import annotations
@@ -27,7 +30,6 @@ from algotrading.contamination import (
     is_partition_lock_signed,
 )
 from algotrading.governance import (
-    RiskLimitsError,
     SignoffError,
     assert_risk_limits_signed,
     assert_v02_code_unblocked,
@@ -42,22 +44,27 @@ _REAL_PARTITIONS = _REPO_ROOT / "configs" / "data_partitions.yml"
 _REAL_LOG = _REPO_ROOT / "docs" / "research_contamination_log" / "research_contamination_log.csv"
 
 
-# ---------- 1. Unsigned-state canary against the real configs --------------
+# ---------- 1. Real-config canary: signed for v0.2_code, freeze pending ----
 
 
-def test_phase1_gate_blocks_v02_code_against_real_configs() -> None:
+def test_phase1_gate_real_configs_signed_for_v02_code_but_freeze_pending() -> None:
     assert _REAL_SIGNOFF.exists(), f"missing {_REAL_SIGNOFF}"
     assert _REAL_RISK.exists(), f"missing {_REAL_RISK}"
     assert _REAL_PARTITIONS.exists(), f"missing {_REAL_PARTITIONS}"
 
-    with pytest.raises(SignoffError):
-        assert_v02_code_unblocked(_REAL_SIGNOFF)
+    # B/C/D/E/H signed → v0.2_code gate ALLOWS.
+    assert_v02_code_unblocked(_REAL_SIGNOFF)
 
-    assert not is_risk_limits_signed(_REAL_RISK)
-    with pytest.raises(RiskLimitsError):
-        assert_risk_limits_signed(_REAL_RISK)
+    # risk_limits.yml signed and locked.
+    assert is_risk_limits_signed(_REAL_RISK)
+    assert_risk_limits_signed(_REAL_RISK)
 
-    assert not is_partition_lock_signed(_REAL_PARTITIONS)
+    # data_partitions.yml signed and locked.
+    assert is_partition_lock_signed(_REAL_PARTITIONS)
+
+    # Validation guard still BLOCKED — partition is locked, but no
+    # validation_freeze event has been appended to the contamination
+    # log yet. That is the next gate in sequence.
     with pytest.raises(PartitionLockMissing):
         enforce_no_validation_before_freeze(
             strategy_version="v0.2",

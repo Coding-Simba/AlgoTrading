@@ -3,18 +3,23 @@
 # Change Request. Until then the file holds placeholders that the
 # contamination guard treats as "not yet locked": any attempt to query the
 # `validation` partition while the lock is missing is rejected.
+#
+# Signer identifier `DIR-01` is the pseudonymous Director-Sponsor ID per
+# `docs/OWNERS.md`. Ranges promoted from `configs/data_partitions.draft.yml`.
+# Per errata §6 / §B.13, registry-first registration governs v0.3 OOS reuse;
+# this lock binds v0.2.
 
-locked: false   # set to true only when the Director Sponsor signs off.
-locked_by: ""
-locked_at_iso: ""
+locked: true
+locked_by: "DIR-01"
+locked_at_iso: "2026-05-09T10:00:00-04:00"
 
 partitions:
   training:
-    start: ""    # ISO date, e.g., "2022-01-03"
-    end:   ""
+    start: "2019-05-06"     # MES launch.
+    end:   "2024-12-31"
   validation:
-    start: ""
-    end:   ""
+    start: "2025-01-02"     # first MES session of 2025.
+    end:   "2025-12-31"
   final_holdback:
-    start: ""
-    end:   ""
+    start: "2026-01-02"
+    end:   "2026-04-30"
