@@ -11,9 +11,15 @@ holdback questions (errata §6).
 
 ## 1. Scope of this sign-off
 
-This appendix locks the **data layer** and **partition lock** at the
-specification level. Once signed, the following are binding inputs to v0.2
-strategy work and may not be edited without a Change Request:
+This appendix signs the **data-QA and partitioning PROCESS** at the
+specification level — not the actual numeric date ranges. The numeric
+ranges live in `configs/data_partitions.yml` and are signed
+**separately** by the Director Sponsor at the partition-lock gate. A
+process-only signature on this appendix does not by itself unblock v0.2
+strategy code; the partition-lock gate must also pass.
+
+Once signed, the following are binding inputs to v0.2 strategy work and
+may not be edited without a Change Request:
 
 - Vendor selection criteria for primary and secondary historical data
   sources (MES tick + BBO).

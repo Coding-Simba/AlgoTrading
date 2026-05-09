@@ -19,8 +19,8 @@ Change Request:
 
 - The set of order types covered: market, limit, stop. Bracket
   (stop-loss + take-profit) resolution rules.
-- Stop-trigger semantics: a stop is triggered when the **trade tape prints
-  through** the stop price, not on a quote that touches without trading.
+- Stop-trigger semantics — see §D.x below: conservative trade-or-quote
+  trigger.
 - Intrabar collision handling: when both stop-loss and take-profit are
   reached within the same bar and the underlying ticks cannot disambiguate
   ordering, the model records the **worst-case (stop-loss) outcome** and
@@ -29,6 +29,47 @@ Change Request:
 - The §D.2 placeholder discipline: any output produced with placeholder
   costs carries the tag `D2_PLACEHOLDER` and is rejected by CI from
   approved backtest, validation, and OOS contexts.
+
+## Stop trigger convention
+
+The approved v0.2 stop trigger is **conservative trade-or-quote
+triggering**.
+
+For a BUY stop:
+
+- trigger if `last_trade_price >= stop_price`
+- OR if `ask >= stop_price`
+
+For a SELL stop:
+
+- trigger if `last_trade_price <= stop_price`
+- OR if `bid <= stop_price`
+
+If historical BBO is unavailable, the trade-tape leg may be evaluated
+for informational analysis only. Such a run is **not clean for
+approval** unless BBO coverage requirements are satisfied.
+
+The source code, tests, and research reports must use this same
+convention.
+
+## D.x Required implementation checks
+
+Before Appendix D may be signed, verify:
+
+- [ ] Market buy pays ask plus slippage.
+- [ ] Market sell hits bid minus slippage.
+- [ ] No midpoint fills.
+- [ ] BUY stop triggers on `last_trade >= stop OR ask >= stop`.
+- [ ] SELL stop triggers on `last_trade <= stop OR bid <= stop`.
+- [ ] Limit target requires trade-through, not touch.
+- [ ] Stop / target same-bar ambiguity defaults to stop first.
+- [ ] If chronological tick data proves target first, chronological order
+      may override.
+- [ ] The chronological override is more conservative than the
+      OHLC-only path (the OHLC-only path is the default; chronological
+      must be opt-in and disclosed).
+- [ ] Placeholder broker costs (`D2_PLACEHOLDER`) are not used in
+      approved backtests.
 
 The fill-model implementation already exists in
 `src/algotrading/fillmodel/model.py` as Sprint 1 framework scaffolding.
@@ -67,15 +108,16 @@ emitted during an approved run.
 
 - `src/algotrading/fillmodel/model.py` —
   - `FillModel.fill_market`, `fill_limit_on_tick`, `fill_stop_on_tick`
-  - `FillModel.stop_triggered` (print-through semantics)
+  - `FillModel.stop_triggered` (conservative trade-or-quote OR semantics; see "Stop trigger convention" above)
   - `FillModel.resolve_bracket_on_bar` (intrabar collision; worst-case
     stop fill; sets `ambiguous_collision=True`)
   - `PlaceholderCosts`, `D2_PLACEHOLDER_TAG`
   - `FillResult.is_placeholder`
 - `src/algotrading/orders/state_machine.py` — consumes fills (Appendix H).
 - `tests/test_fillmodel.py` — unit tests covering market slippage, limit
-  trigger conditions, stop print-through, bracket collision worst-case,
-  and the `D2_PLACEHOLDER` tag.
+  trigger conditions, stop trade-tape leg, stop quote leg, both-legs-
+  below-stop no-trigger, bracket collision worst-case, and the
+  `D2_PLACEHOLDER` tag.
 - `configs/sessions/mes.yml` — tick size context for prices used in tests.
 
 ## 5. Review checklist
@@ -87,12 +129,15 @@ and tests above. Initial each box. Unchecked items block the signature.
        `STOP`. No other order types are silently fillable. The reviewer
        has confirmed `OrderType` is the only `Enum` of order types in
        `fillmodel/model.py`.
-2. [ ] `stop_triggered` uses the **trade tape** (`tick.price`), not a
-       BBO quote. The reviewer has read the function and confirmed there
-       is no quote-touch path that triggers a stop.
+2. [ ] `stop_triggered` uses the **conservative trade-or-quote** rule
+       defined in the "Stop trigger convention" section above. The
+       reviewer has read the function and confirmed both legs are
+       evaluated with OR semantics, and that a missing BBO falls back to
+       the trade-tape-only leg flagged as informational-only.
 3. [ ] Stop trigger comparison is correct for both sides:
-       BUY stop triggers when `tick.price >= intent.price`; SELL stop
-       triggers when `tick.price <= intent.price`.
+       BUY stop triggers when `tick.price >= intent.price` OR
+       `quote.ask_px >= intent.price`. SELL stop triggers when
+       `tick.price <= intent.price` OR `quote.bid_px <= intent.price`.
 4. [ ] `resolve_bracket_on_bar` returns the worst-case (stop-loss) fill
        price when both target and stop are hit within the same bar, and
        sets `ambiguous_collision=True`. The reviewer has verified the
@@ -118,8 +163,10 @@ and tests above. Initial each box. Unchecked items block the signature.
        it before the broker-rate-sheet substitution lands.
 10. [ ] The unit tests in `tests/test_fillmodel.py` cover, at minimum:
         market slippage with sign, limit-fill trigger boundary, stop
-        print-through (BUY and SELL), bracket worst-case collision with
-        `ambiguous_collision`, and the `D2_PLACEHOLDER` tag round-trip.
+        trade-tape leg (BUY and SELL), stop quote leg (BUY and SELL),
+        both-legs-below-stop no-trigger, bracket worst-case collision
+        with `ambiguous_collision`, and the `D2_PLACEHOLDER` tag round-
+        trip.
 11. [ ] No v0.2 strategy logic is present anywhere under
         `src/algotrading/` at the time of signing (Sprint 1 freeze;
         errata §3, §9). Fill-model unit tests do not import a v0.2

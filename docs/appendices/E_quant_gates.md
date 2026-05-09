@@ -10,9 +10,16 @@ any output to which an E-gate threshold is applied (errata §5; Appendix D).
 
 ## 1. Scope of this sign-off
 
-This appendix locks the **quantitative pass / fail rules** at the
-specification level. Once signed, the following are binding inputs to v0.2
-strategy work and may not be edited without a Change Request:
+This appendix signs the **quantitative gate METHODOLOGY** at the
+specification level — not the Director-set numeric values. The numeric
+values (capital, drawdown ceilings, daily loss limit, losing-streak
+ceiling, ROR threshold) live in `configs/risk_limits.yml` and are
+signed **separately** by the Director Sponsor at the risk-limits gate.
+A methodology-only signature on this appendix does not by itself
+unblock v0.2 strategy code; the risk-limits gate must also pass.
+
+Once signed, the following are binding inputs to v0.2 strategy work
+and may not be edited without a Change Request:
 
 - Per-strategy quantitative thresholds: expectancy floor (in R), Sharpe
   floor, maximum drawdown ceiling, win-rate floor, trade-count floor.
