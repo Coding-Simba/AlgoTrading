@@ -140,3 +140,24 @@ def test_cancel_first_rejected_unless_atomic_flatten_flag() -> None:
         validate_flatten_plan(cancel_first_plan, atomic_flatten=False)
     with pytest.raises(FlattenSequenceError):
         validate_flatten_plan(cancel_first_plan, atomic_flatten=True)
+
+
+def test_kill_switch_uses_protected_flatten_not_cancel_first() -> None:
+    """Appendix H §1.e: the kill switch invokes the protected flatten
+    plan. There is no default cancel-first path. This test asserts the
+    only sanctioned default plan is the protected sequence — even
+    cancel-all-then-flatten variants are refused."""
+    cancel_all_then_flatten = (
+        FlattenStep.HALT_NEW_ENTRIES,
+        FlattenStep.CANCEL_REMAINING_OCO,
+        FlattenStep.KEEP_STOP_ACTIVE,
+        FlattenStep.SUBMIT_MARKET_FLATTEN,
+        FlattenStep.CONFIRM_BROKER_FLAT,
+    )
+    with pytest.raises(FlattenSequenceError):
+        validate_flatten_plan(cancel_all_then_flatten)
+
+    plan = protected_flatten_plan()
+    validate_flatten_plan(plan)
+    assert plan.index(FlattenStep.KEEP_STOP_ACTIVE) < plan.index(FlattenStep.SUBMIT_MARKET_FLATTEN)
+    assert plan.index(FlattenStep.CONFIRM_BROKER_FLAT) < plan.index(FlattenStep.CANCEL_REMAINING_OCO)
