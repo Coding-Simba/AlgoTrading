@@ -27,6 +27,7 @@ _VALID_GATES = (
     "paper",
     "live",
     "scaleup",
+    "scope_expansion",
 )
 
 
