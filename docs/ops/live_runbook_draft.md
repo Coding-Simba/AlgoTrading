@@ -24,11 +24,19 @@ be relied on until:
 3. The procurement answers and runbook adjustments are captured in
    `docs/ops/broker_specific_questions.md` and reviewed.
 4. Appendix F is finalized for that broker.
-5. Appendix I (legal scoping) is signed.
 
-Until all of the above are complete, **paper trading is BLOCKED** per
+Appendix I is a scope-control note for this internal-only project (see
+`docs/appendices/I_legal_scope_note.md`); it does **not** gate paper or
+internal live trading. Counsel review is required only on a scope-expansion
+trigger (client / outside / pooled capital, paid signals, paid advice,
+copy-trading, public performance marketing, managed accounts).
+
+Until items 1–4 above are complete, **paper trading is BLOCKED** per
 `docs/GATES.md`. Live trading is BLOCKED additionally on the paper gate per
 §E.3 and on Appendix G for any size beyond the small-size minimum.
+
+This runbook is draft only and does not authorize paper / live trading
+until broker-specific procedures are filled in.
 
 ---
 
@@ -54,9 +62,9 @@ TBD-BROKER until the broker is selected and the answer is on file.
 - [ ] NTP / chrony reports `synchronised: yes` with a stratum source.
 - [ ] `ClockDriftMonitor` (in `src/algotrading/monitoring/latency.py`) is
       armed against the broker session timestamp once it connects. Defaults
-      from that module: `warn_ns = 1_000_000` (1 ms),
-      `critical_ns = 10_000_000` (10 ms). Any `critical` alert before market
-      open aborts startup.
+      from that module: `warn_ns = 10_000_000` (10 ms),
+      `critical_ns = 250_000_000` (250 ms — spec halt threshold). Any
+      `critical` alert before market open aborts startup.
 - [ ] Local UTC offset confirmed within 1 ms of `time.google.com`.
 
 ### 1.3 Market data session
@@ -85,8 +93,12 @@ TBD-BROKER until the broker is selected and the answer is on file.
 
 ### 1.5 Safety surfaces
 
-- [ ] Kill-switch armed and tested (dry-run cancel-all returns success without
-      submitting any orders).
+- [ ] Kill-switch armed and tested via a dry-run of the §1.e
+      protected-flatten plan (`HALT_NEW_ENTRIES` →
+      `KEEP_STOP_ACTIVE` → `SUBMIT_MARKET_FLATTEN` →
+      `CONFIRM_BROKER_FLAT` → `CANCEL_REMAINING_OCO`) returns success
+      without submitting any orders. There is no default cancel-first
+      path.
 - [ ] Position state reconciled with broker (see §1.4).
 - [ ] Contamination log reachable and writable; latest entry timestamp visible
       (see `src/algotrading/contamination/log.py`).
@@ -131,7 +143,7 @@ Defaults from `src/algotrading/monitoring/latency.py`:
 | Monitor              | warn               | critical            |
 | -------------------- | ------------------ | ------------------- |
 | `LatencyMonitor`     | 50 ms (50_000_000 ns)  | 250 ms (250_000_000 ns) |
-| `ClockDriftMonitor`  | 1 ms (1_000_000 ns)    | 10 ms (10_000_000 ns)   |
+| `ClockDriftMonitor`  | 10 ms (10_000_000 ns)  | 250 ms (250_000_000 ns) |
 
 A `warn` increments a counter and posts to the ops channel. A `critical`
 pages the on-call (see §6) and arms the kill-switch path. Any negative
@@ -164,42 +176,79 @@ Specific dollar values are TBD — placeholder pending Director Sponsor sign-off
 
 ---
 
-## 3. Manual flatten
+## 3. Manual flatten (protected flatten)
 
-Manual flatten is the operator action that liquidates all positions and
-cancels all working orders immediately.
+For manual flatten, pre-news flatten, or session-end flatten, use the
+protected-flatten sequence specified in Appendix H §1.e and implemented
+in `src/algotrading/orders/flatten.py`. **Cancel-first is forbidden**
+unless the chosen broker offers a documented broker-native atomic
+flatten (see §3.4 atomic override).
 
-### 3.1 How
+### 3.1 Default protected sequence
 
-1. Trigger the kill-switch from the ops console. The kill-switch is a single
-   idempotent command; running it twice is safe.
-2. The kill-switch performs, in order:
-   - Cancel-all on every working order.
-   - Submit market orders to flatten every held position.
-   - Move the system to `STANDBY` and refuse new strategy intents.
-3. Confirm via broker session that working order count is 0 and position
-   count is 0.
-4. Confirm via local order log that every working order moved through
-   `PENDING_NEW -> WORKING -> CANCELED` (or terminated as `FILLED` if a fill
-   raced the cancel).
-5. Confirm via local position log that every held position has a matching
-   market sell (or buy, if short) recorded with a fill price and timestamp.
+Run in order. The protective stop **stays working at the broker** until
+step 4 confirms the broker is flat.
 
-### 3.2 Idempotency
+1. **Halt new entries.** Move the strategy-version to `STANDBY` (or
+   `ERROR_HALTED` if invoked by a hard tripwire); refuse new strategy
+   intents. The execution lifecycle continues to drive the in-flight
+   trade through to FLAT.
+2. **Keep protective stop active.** Do **not** cancel the protective
+   stop. It stays working at the broker for the duration of steps 3–4.
+3. **Submit market flatten order** (or documented broker-native atomic
+   flatten under §3.4).
+4. **Confirm broker position is flat.** Read the broker open-orders /
+   position snapshot. The position must be 0 and the working order
+   count must be 0 except for the still-active protective stop.
+5. **Cancel remaining OCO leg.** Only after step 4: cancel the
+   now-redundant protective stop / OCO sibling.
+6. **Verify broker position equals internal position.** Reconcile the
+   local order log against the broker open-orders snapshot.
+7. **If mismatch or position flip occurs, transition to `ERROR_HALTED`.**
+   The protective stop remains working pending Risk-Reviewer disposition.
 
-The kill-switch is idempotent: re-running it on an already-flat account
-issues no new orders and returns success. If the kill-switch reports
-divergence (broker still shows working orders or positions after two
-attempts), escalate to ERROR_HALTED (§4).
+### 3.2 Mismatch / flip behaviour
 
-### 3.3 Confirm
+At any point in the sequence, if (a) the broker reports a position
+whose sign differs from the internal record, (b) the position size
+flips through zero unexpectedly, or (c) the broker open-orders snapshot
+diverges from the local order log beyond the CONFIRM_BROKER_FLAT check,
+drive the execution lifecycle to `ERROR_HALTED` immediately. The
+protective stop remains working. Resolution is via post-incident
+review; no automatic recovery.
+
+### 3.3 Idempotency
+
+The flatten command is idempotent: re-running it on an already-flat
+account issues no new orders and returns success. If two attempts
+report divergence, escalate to ERROR_HALTED (§4).
+
+### 3.4 Atomic override (broker-native only)
+
+A cancel-first or single-call atomic flatten is permitted only when the
+chosen broker offers a documented broker-native atomic flatten that
+guarantees protection during the call. The atomic override:
+
+- requires `atomic_flatten=True` AND
+  `broker_atomic_flatten_documented=True` in the call site (see
+  `src/algotrading/orders/flatten.py:protected_flatten_plan`);
+- requires the broker's written confirmation on file at
+  `docs/PROCUREMENT.md` row "OCO residence confirm" describing the
+  atomic flatten path (atomic call name, idempotency, partial-fill
+  behaviour, failure modes);
+- replaces steps 2–5 above with a single `ATOMIC_FLATTEN` step
+  followed by `CONFIRM_BROKER_FLAT`.
+
+### 3.5 Confirm
 
 Manual flatten is "confirmed" only when:
 
-- Broker working orders = 0.
+- Broker working orders = 0 (after step 5 / atomic CONFIRM_BROKER_FLAT).
 - Broker positions = 0.
 - Local order log shows every previously-working order in a terminal state.
 - Local position log shows zero net position with explicit closing fills.
+- The execution lifecycle has reached `FLAT_RECONCILING` and then
+  `FLAT` (or `ERROR_HALTED` if mismatch / flip occurred).
 - Ops on-call has logged the flatten event with timestamp and reason.
 
 ---
@@ -238,9 +287,13 @@ ERROR_HALTED is entered automatically on any of:
 ### 4.4 Rollback / replay logic
 
 - No automatic rollback of fills. Fills that occurred are real.
-- Working orders are cancelled (manual flatten path, §3).
-- Held positions are flattened unless Risk explicitly directs otherwise in
-  writing in the incident channel.
+- The position is flattened via the §3 protected-flatten sequence:
+  protective stop stays working until the broker confirms flat, then the
+  remaining OCO leg is cancelled. There is no default cancel-first path.
+- If position flips or broker / internal mismatch occurs during the
+  sequence, the execution lifecycle is driven to `ERROR_HALTED` and the
+  protective stop remains working pending Risk-Reviewer disposition in
+  the incident channel.
 - For replay analysis, the preserved logs are loaded into the offline
   harness; do not replay against a live session.
 
@@ -290,8 +343,8 @@ sign-off is on file.
 | Severity   | Routing                              | Examples                                                                     |
 | ---------- | ------------------------------------ | ---------------------------------------------------------------------------- |
 | `info`     | Ops chat only                        | Heartbeat, session connect, bar boundary tick                                |
-| `warn`     | Ops chat + counter; no page          | LatencyMonitor warn (>= 50 ms); ClockDriftMonitor warn (>= 1 ms); soft tripwire |
-| `critical` | Page primary on-call; backup if no ack | LatencyMonitor critical (>= 250 ms); ClockDriftMonitor critical (>= 10 ms); OrderStateError; hard tripwire; broker disconnect beyond grace |
+| `warn`     | Ops chat + counter; no page          | LatencyMonitor warn (>= 50 ms); ClockDriftMonitor warn (>= 10 ms); soft tripwire |
+| `critical` | Page primary on-call; backup if no ack | LatencyMonitor critical (>= 250 ms); ClockDriftMonitor critical (>= 250 ms); OrderStateError; hard tripwire; broker disconnect beyond grace |
 | `page`     | Pages primary + backup + Risk        | ERROR_HALTED entry; reconciliation divergence; contamination-log write during session |
 
 ### 6.2 Page targets
@@ -309,13 +362,18 @@ This document is **DRAFT**. The following must all be resolved before this
 runbook can be promoted out of draft and before paper trading may begin:
 
 - DRAFT until broker confirmed; paper trading **BLOCKED** until
-  **[Appendix F finalized]** AND **[Appendix I signed]**.
+  **[Appendix F finalized]** for the chosen broker.
 - TBD-BROKER items in §1.4, §2, §4.1, §6.2 must be answered against the
   chosen broker (see `docs/ops/broker_specific_questions.md`).
 - TBD-OPS owner names in §5 and §6 must be filled in `docs/OWNERS.md`.
 - Risk-limit dollar values in §2.4 must be set by the Director Sponsor.
 - Vendor confirmation responses (rate sheet, OCO, disconnect behaviour) must
   be on file under `docs/vendor-replies/`.
+
+Appendix I is a scope-control note for this internal-only project (see
+`docs/appendices/I_legal_scope_note.md`); it does not gate paper or
+internal live trading. Counsel review is required only on a
+scope-expansion trigger.
 
 No item in this runbook may be cited as evidence of production-readiness or
 broker-specific behaviour while the document remains DRAFT.
