@@ -1,0 +1,105 @@
+# Data partition DRAFT — §C.9 partition plan, candidate-only.
+#
+# This file is a *proposal* for the production lock file at
+# `configs/data_partitions.yml`. It is never the lock itself. The Director
+# Sponsor signs the production file (per `configs/signoff_matrix.yml` and
+# `docs/OWNERS.md`); this draft exists only so reviewers can comment on date
+# ranges, history limits, and the ES-proxy question before commitment.
+#
+# Governance:
+#   - §C.9 specifies that training / validation / final_holdback are locked
+#     before any v0.2 query runs. Locking happens in the production file,
+#     not here.
+#   - §B.13 (canonical per errata §6) requires registry-first registration
+#     for any v0.3 to treat a v0.2 OOS run as clean validation. That rule
+#     governs this plan: the candidate ranges below presume v0.2 will run a
+#     single one-shot OOS against `validation`, and any v0.3 must be appended
+#     to `StrategyRegistry` before that v0.2 OOS query is executed.
+#
+# This file MUST remain `locked: false`. It is a draft; locking belongs to
+# `configs/data_partitions.yml`.
+
+locked: false                # always false in the draft.
+locked_by: ""
+locked_at_iso: ""
+
+candidate_only: true         # signals that ranges are proposals, not binding.
+mes_history_limited: true    # MES launched 2019-05-06; pre-launch backtests
+                             # require the ES-proxy disclosure (see below).
+es_proxy_required: false     # default false. Flip to true only if a backtest
+                             # window precedes 2019-05-06 AND the research
+                             # report carries the ES-proxy disclosure block
+                             # described in `docs/data/partition_plan.md`.
+final_holdback_min_trades: 50  # candidate floor, NOT a Director Sponsor
+                               # commitment. The Director Sponsor sets the
+                               # binding number when signing
+                               # `configs/data_partitions.yml`. See Appendix
+                               # E §5 trade-count floor row.
+no_overlap_verified: false   # set true only after a reviewer has confirmed
+                             # by direct inspection that
+                             # training.end < validation.start AND
+                             # validation.end < final_holdback.start, with
+                             # no shared calendar dates.
+commentary: >
+  Candidate ranges proposed against MES history (launch: 2019-05-06).
+  Training spans MES launch through the end of 2024, leaving 2025 for the
+  one-shot OOS / validation partition and the first four months of 2026 for
+  the final family-level holdback. None of these ranges has been queried in
+  the construction of this draft; the file was written by reading the
+  calendar only. Pre-2019-05-06 windows would require an ES-proxy run; this
+  draft does not propose any such window. The Director Sponsor signs the
+  production lock file after Phase 1 review of this draft.
+
+partitions:
+  training:
+    start: "2019-05-06"        # MES launch.
+    end:   "2024-12-31"
+    candidate_only: true
+    rationale: >
+      Full available MES history minus the validation and holdback windows.
+      Begins on the MES launch date; no ES-proxy splice is proposed. The
+      end-of-2024 cutoff leaves a clean year-boundary gap before the
+      validation partition opens.
+    mes_history_limited: true
+    es_proxy_required: false
+
+  validation:
+    start: "2025-01-02"        # first MES session of 2025.
+    end:   "2025-12-31"
+    candidate_only: true
+    rationale: >
+      Full calendar year 2025. Used for the §B.13 / §E one-shot OOS query
+      per strategy version. Reviewer must confirm trade-count floor in
+      Appendix E §5 is met before this partition is opened. Per §B.13
+      (canonical), any v0.3 must be appended to `StrategyRegistry` before
+      the v0.2 OOS query runs against this range, otherwise this partition
+      is contaminated for v0.3 (errata §6).
+    mes_history_limited: false
+    es_proxy_required: false
+    notes:
+      - "TBD: confirm 2025-01-02 is the first regular MES session (not a"
+      - "  half-day) once the session calendar is signed off."
+
+  final_holdback:
+    start: "2026-01-02"
+    end:   "2026-04-30"
+    candidate_only: true
+    rationale: >
+      Family-level binding holdback. Used only after the per-strategy OOS
+      pass and after the holdback trade-count floor is met. Width is
+      deliberately narrow: a wider holdback steals from training without a
+      corresponding statistical-power gain at the family level. Director
+      Sponsor sets the final width.
+    mes_history_limited: false
+    es_proxy_required: false
+    notes:
+      - "TBD: 2026-04-30 is a candidate cap aligned with the Phase 1"
+      - "  schedule; Director Sponsor sets the binding end date."
+      - "TBD: confirm `final_holdback_min_trades` (currently 50) against"
+      - "  Appendix E §5 trade-count floor before this draft is promoted."
+
+# What this draft does NOT do:
+#   - Does NOT load any market data.
+#   - Does NOT query the validation or final_holdback partitions.
+#   - Does NOT unlock or modify `configs/data_partitions.yml`.
+#   - Does NOT bind the Director Sponsor to any specific date range.

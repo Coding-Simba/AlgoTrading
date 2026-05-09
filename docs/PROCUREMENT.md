@@ -48,3 +48,4 @@ approved**, even if pre-code sign-off otherwise passes (errata §5).
 | Secondary data vendor   |           |           |                |            |
 | Economic calendar       |           |           |                |            |
 | Partition lock (§C.9)   |           | internal  |                |            |
+| Request templates draft |           | internal  |                | All four request templates drafted, none sent — assigned to Ops. |
