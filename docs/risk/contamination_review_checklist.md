@@ -62,10 +62,15 @@ the version's `validation_freeze` row, or absence of the freeze row.
 
 ## 4. Live / paper datasets only after gate sign-off
 
-- [ ] No row has `dataset_used=paper` unless the `F` (Appendix F finalized)
-      and `I` (Appendix I counsel) rows in `configs/signoff_matrix.yml` are
-      signed (signed=true, signed_by and signed_at_iso non-empty), with
-      `signed_at_iso` earlier than the row's `datetime_iso`.
+- [ ] No row has `dataset_used=paper` unless the `F` (Appendix F
+      finalized) row in `configs/signoff_matrix.yml` is signed
+      (signed=true, signed_by and signed_at_iso non-empty), with
+      `signed_at_iso` earlier than the row's `datetime_iso`. Appendix I
+      is a scope-control note for internal-only scope and is not part
+      of the paper-gate set; if a scope-expansion trigger fires (client
+      / outside / pooled capital, paid signals, paid advice,
+      copy-trading, public marketing, managed accounts), the paper /
+      live dataset is additionally gated on Appendix I review.
 - [ ] No row has `dataset_used=live` unless the `paper` row in
       `configs/signoff_matrix.yml` is signed earlier than the row's
       `datetime_iso`.
