@@ -1,0 +1,14 @@
+# Training-run config for `algotrading.cli run training`.
+#
+# Synthetic mode is the only path enabled in v0.2. Real-data mode
+# requires pre-code sign-off (configs/signoff_matrix.yml) and a signed
+# partition lock (configs/data_partitions.yml); the runner refuses
+# real-data runs until both are signed.
+
+mode: "synthetic"     # "synthetic" | "real"
+synthetic_bars: 60    # number of synthetic 5m bars to feed
+strategy_version: "v0.2"
+notes:
+  - "Training runs are not approved backtests. Approved backtests"
+  - "additionally require the broker rate sheet to substitute §D.2"
+  - "placeholder costs (errata §5)."
