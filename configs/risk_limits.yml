@@ -1,0 +1,16 @@
+# Risk limits — Director-set values, v1.4-r1.
+# These values are binding once `locked: true` and `signed_by` / `signed_at_iso`
+# are populated. Editing locked values requires a Change Request countersigned
+# by the Risk Reviewer. Empty placeholders are rejected by the governance
+# guard (see src/algotrading/governance/risk_limits.py).
+
+allocated_capital_usd:                  # number, > 0 (USD)
+max_oos_drawdown_pct:                   # number, in (0, 100)  (% of allocated capital)
+max_acceptable_losing_streak:           # int, >= 1            (consecutive losing trades)
+daily_loss_limit_usd:                   # number, > 0          (USD per session)
+aggregate_program_drawdown_limit_pct:   # number, in (0, 100)  (% of allocated capital)
+risk_of_ruin_threshold_pct:             # number, in (0, 100)  (% probability ceiling)
+
+signed_by: ""        # Director Sponsor identifier (must differ from Risk Reviewer)
+signed_at_iso: ""    # ISO-8601 timestamp, e.g., "2026-05-09T10:00:00-04:00"
+locked: false        # set to true only when Director Sponsor signs off.

@@ -1,0 +1,117 @@
+# Sign-off matrix — v1.4-r1.
+# Tracks the five pre-code sign-offs (Appendices B, C, D, E, H) plus the
+# downstream phase gates. Pre-code rows must be signed before any v0.2
+# strategy code lands; phase-gate rows are signed at each subsequent phase.
+#
+# signer_role values mirror docs/OWNERS.md.
+# required_for ∈ {v0.2_code, v0.2_backtest, validation, paper, live, scaleup}
+# signed_at_iso must be ISO-8601 (e.g., "2026-05-09T10:00:00-04:00").
+
+rows:
+  - id: "B"
+    title: "Appendix B — strategy specification & registry rules"
+    signer_role: "Director sponsor"
+    required_for: "v0.2_code"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
+
+  - id: "C"
+    title: "Appendix C — data partition & contamination protocol"
+    signer_role: "Risk reviewer"
+    required_for: "v0.2_code"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
+
+  - id: "D"
+    title: "Appendix D — fill model (placeholders permitted for framework)"
+    signer_role: "Engineering"
+    required_for: "v0.2_code"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
+
+  - id: "E"
+    title: "Appendix E — validation, paper, and live transition criteria"
+    signer_role: "Quant"
+    required_for: "v0.2_code"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
+
+  - id: "H"
+    title: "Appendix H — order state machine"
+    signer_role: "Engineering"
+    required_for: "v0.2_code"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
+
+  - id: "broker_rate_sheet"
+    title: "Broker rate sheet substitution for §D.2 placeholders"
+    signer_role: "Ops"
+    required_for: "v0.2_backtest"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: "Required before any approved v0.2 backtest, validation, or OOS run."
+
+  - id: "F"
+    title: "Appendix F — broker integration & OCO finalization"
+    signer_role: "Ops"
+    required_for: "paper"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
+
+  - id: "I"
+    title: "Appendix I — counsel sign-off (capital scope)"
+    signer_role: "Legal"
+    required_for: "paper"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: "Required before paper or live trading; see errata §4."
+
+  - id: "validation_freeze"
+    title: "Validation freeze (Week 3)"
+    signer_role: "Risk reviewer"
+    required_for: "validation"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
+
+  - id: "paper"
+    title: "Paper-trading transition per §E.3"
+    signer_role: "Director sponsor"
+    required_for: "paper"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
+
+  - id: "small_size_live"
+    title: "Small-size live transition"
+    signer_role: "Director sponsor"
+    required_for: "live"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
+
+  - id: "G"
+    title: "Appendix G — scale-up beyond 1 MES"
+    signer_role: "Director sponsor"
+    required_for: "scaleup"
+    signed: false
+    signed_by: ""
+    signed_at_iso: ""
+    notes: ""
