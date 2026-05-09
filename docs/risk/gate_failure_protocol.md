@@ -107,7 +107,11 @@ binding family-level regardless of v0.2 / v0.3 inheritance.
   requires a new top-level family identifier; no carry-over of
   holdback data is permitted (`docs/GATES.md:9`).
 - **Outcome on pass:** the family proceeds to the paper gate, subject
-  to Appendix F finalization and Appendix I sign-off.
+  to Appendix F finalization for the chosen broker. Appendix I is a
+  scope-control note for internal-only scope (see
+  `docs/appendices/I_legal_scope_note.md`); it does not gate paper or
+  internal live trading. Counsel review is required only on a
+  scope-expansion trigger.
 - **Who is informed:** all workstream owners.
 - **Recorded at:** contamination log (`action_type=other`,
   `decision=escalated` on fail); family-level verdict recorded in the
@@ -121,7 +125,10 @@ the simulator.
 
 - **Decision-maker:** Director Sponsor, on the joint recommendation of
   Ops, Quant, and Risk Reviewer.
-- **Pre-conditions** (`docs/GATES.md:10`): rows `F` and `I` signed.
+- **Pre-conditions** (`docs/GATES.md`): row `F` signed. Appendix I is a
+  scope-control note for internal-only scope and is not a paper-gate
+  pre-condition; counsel review is required only on a scope-expansion
+  trigger.
 - **Evidence required:** paper session reports, divergence analysis vs
   simulator (fill model, slippage, latency per
   `src/algotrading/monitoring/`), contamination-log rows for every
