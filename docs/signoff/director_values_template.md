@@ -102,23 +102,35 @@ Cross-reference summary (informational; full checks live in
 
 ---
 
-## 7. External / client capital scope (errata §4)
+## 7. Scope-expansion triggers (errata §4)
 
-If external or client capital is in scope at any point **before** v0.2
-strategy code begins, Appendix I sign-off becomes a coding prerequisite
-(errata §4) and must be signed by Legal before code lands. Internal
-proprietary capital alone does not invoke this prerequisite for the
-pre-code gate.
+This project is internal / personal capital only (see
+`docs/appendices/I_legal_scope_note.md`). Counsel review is **not**
+required for internal v0.2 code, paper, or internal live trading.
 
-| Field                                                   | Value |
-| ------------------------------------------------------- | ----- |
-| External / client capital in scope before strategy code? (yes / no) |       |
-| If yes — Appendix I PR / sign-off date                  |       |
-| If yes — Legal signer name                              |       |
-| Notes                                                   |       |
+A scope-expansion trigger reactivates the legal-review path
+**immediately**. Work pauses until counsel review is complete.
+Triggers:
 
-If "yes" is recorded above, the gate state remains "Now" until Appendix I
-is signed off by Legal regardless of the other rows in this template.
+- client capital
+- outside capital (including friends-and-family or any third party)
+- pooled capital (commingled accounts, fund-of-one, master-feeder, SMA
+  aggregation)
+- paid signals
+- paid futures trading advice
+- copy-trading service
+- public performance marketing
+- managed accounts
+
+| Field                                                       | Value |
+| ----------------------------------------------------------- | ----- |
+| Any scope-expansion trigger active? (yes / no)              |       |
+| If yes — trigger(s)                                         |       |
+| If yes — counsel engaged (name)                             |       |
+| If yes — Appendix I review PR / sign-off date               |       |
+
+If "yes" is recorded above, the gate state remains "Now" until counsel
+review is complete regardless of the other rows in this template.
 
 ## 8. Sign-off
 

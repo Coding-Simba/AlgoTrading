@@ -24,10 +24,13 @@ The Phase 1 sign-off review covers, and **only** covers:
 - The three-partition date ranges landing in `configs/data_partitions.yml`
   (§C.9 lock; §B.13 registry-first rule per errata §6).
 
-Subsequent gates — broker rate sheet substitution, Appendix F, Appendix I
-counsel sign-off, validation freeze, paper transition, small-size live,
-Appendix G, scale-up — are **out of scope** for this packet and are signed
-at their respective phase gates.
+Subsequent gates — broker rate sheet substitution, Appendix F,
+validation freeze, paper transition, small-size live, Appendix G,
+scale-up — are **out of scope** for this packet and are signed at their
+respective phase gates. Appendix I is a scope-control note for
+internal-only scope (see `docs/appendices/I_legal_scope_note.md`); it
+is not in the gate set and is reactivated only on a scope-expansion
+trigger.
 
 ## 2. Appendix sign-off rows
 
@@ -43,12 +46,29 @@ Signer roles mirror `docs/OWNERS.md` and `configs/signoff_matrix.yml`. The
 | E  | Validation, paper, and live transition criteria                | Quant              | `docs/appendices/E_quant_gates.md`                                | v0.2 strategy code (joint with B, C, D, H)      |
 | H  | Order state machine                                            | Engineering        | `docs/appendices/H_execution_ops.md`                              | v0.2 strategy code (joint with B, C, D, E)      |
 
+Scope summary by appendix:
+
+- **B** — strategy registry rules (`src/algotrading/registry/registry.py`),
+  the §B.13 registry-first rule that governs v0.3 OOS reuse, and the locked
+  parameter set the v0.2 implementation must mirror.
+- **C** — vendor selection, data-QA discipline, the three-partition lock
+  template at `configs/data_partitions.yml`, and the contamination protocol
+  enforced by `src/algotrading/contamination/enforcement.py`.
+- **D** — fill semantics, stop-trigger on print-through, intrabar collision
+  handling (`src/algotrading/fillmodel/model.py`), and the
+  `D2_PLACEHOLDER` discipline.
+- **E** — quant gate thresholds, OOS protocol, final-holdback gating, and
+  baseline-runner expectations (`src/algotrading/baselines/`).
+- **H** — order state machine and allowed transitions
+  (`src/algotrading/orders/state_machine.py`), §H.2 latency / clock-drift
+  monitoring scaffolding (`src/algotrading/monitoring/latency.py`).
+
 ## 3. Director-set risk values
 
 Six values, all signed by the Director Sponsor. Defaults are unsigned. They
-land in `configs/risk_limits.yml` and are validated by the governance guard.
-Director Sponsor and Risk Reviewer must be distinct individuals
-(`docs/OWNERS.md` independence rule).
+land in `configs/risk_limits.yml` and are validated by the governance guard
+referenced in that file's preamble. Director Sponsor and Risk Reviewer must
+be distinct individuals (`docs/OWNERS.md` independence rule).
 
 | Value                                  | Signer role       | Units                | Default state |
 | -------------------------------------- | ----------------- | -------------------- | ------------- |
@@ -67,13 +87,17 @@ copied into `configs/risk_limits.yml` and signed (`locked: true`).
 
 The lock template is `configs/data_partitions.yml`. The §C.9 lock binds the
 training, validation, and final-holdback date ranges. Once committed,
-edits require a Change Request. Until the lock is signed, the contamination
-guard rejects any attempt to query the validation partition.
+edits require a Change Request. Until the lock is signed
+(`locked: true` with `locked_by` and `locked_at_iso` set, and all six
+date fields populated), `src/algotrading/contamination/enforcement.py`
+rejects any attempt to query the validation partition.
 
 Per errata §6, the controlling rule for v0.3 OOS reuse is **§B.13**
 (registry-first): the v0.2 OOS partition is clean for v0.3 only if v0.3
 rules were registered in `src/algotrading/registry/registry.py` **before**
-the v0.2 OOS query was run. §C.9 wording defers to §B.13.
+the v0.2 OOS query was run. §C.9 wording defers to §B.13 if any apparent
+inconsistency arises. The final holdback partition is binding family-level
+validation regardless of registration timing.
 
 | Partition       | Source field                              | Default state |
 | --------------- | ----------------------------------------- | ------------- |
@@ -83,29 +107,37 @@ the v0.2 OOS query was run. §C.9 wording defers to §B.13.
 
 ## 5. Acceptance criteria for v0.2 unblock
 
-All of the following must hold before v0.2 strategy code may be merged:
+All of the following must hold before v0.2 strategy code may be merged to
+the spec-named branch:
 
-1. Every appendix row in §2 carries a signature and
-   `configs/signoff_matrix.yml` shows `signed: true` for ids B, C, D, E, H.
+1. Every appendix row in §2 carries a signature (signer name, role, date)
+   and `configs/signoff_matrix.yml` shows `signed: true` for ids B, C, D,
+   E, H.
 2. `configs/risk_limits.yml` carries non-empty values for all six fields,
    plus `locked: true`, `signed_by` (Director Sponsor identifier, distinct
    from the Risk Reviewer), and `signed_at_iso` (ISO-8601).
-3. `configs/data_partitions.yml` carries non-empty start/end for all three
-   partitions, plus `locked: true`, `locked_by`, and `locked_at_iso`.
-4. The Risk Reviewer has counter-signed certifying independence per
-   `docs/OWNERS.md`.
+3. `configs/data_partitions.yml` carries non-empty start/end for training,
+   validation, and final_holdback, plus `locked: true`, `locked_by`, and
+   `locked_at_iso`. The contamination guard
+   (`src/algotrading/contamination/enforcement.py:is_partition_lock_signed`)
+   returns `True` for the file.
+4. The Risk Reviewer has counter-signed the consolidated block in §6
+   below, certifying independence per `docs/OWNERS.md` (Risk Reviewer is
+   not the Engineering, Quant, or Director Sponsor on this family).
 5. CI gate is all-green: `tests/test_phase1_gate.py` and the matrix
    defined by `configs/signoff_matrix.yml` pass; the freeze guard
    `tests/test_sprint1_freeze.py` continues to pass.
 
-If any of the above is missing, the gate state remains "Now" and v0.2
-strategy code remains FORBIDDEN.
+If any of the above is missing, the gate state remains "Now" per
+`docs/GATES.md` and v0.2 strategy code remains FORBIDDEN.
 
 ## 6. Consolidated sign-off block
 
 Empty by default. Each row is filled by the named signer on the same PR
 that flips the matching value in `configs/signoff_matrix.yml`,
-`configs/risk_limits.yml`, or `configs/data_partitions.yml`.
+`configs/risk_limits.yml`, or `configs/data_partitions.yml`. The Risk
+Reviewer counter-sign at the bottom certifies independence (no overlap
+with Engineering, Quant, or Director Sponsor on this family).
 
 ### 6.1 Appendix signatures
 
