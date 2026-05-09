@@ -1,0 +1,13 @@
+# C# build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# NinjaTrader-side compile output (we copy to NT8, never the other way)
+# (This protects against accidentally checking in NT's compiled .dll if a
+# symlink ever gets pointed the wrong direction.)
+*.dll
+*.pdb
+NinjaTrader.Custom.dll
