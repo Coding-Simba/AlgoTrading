@@ -65,8 +65,12 @@ class LatencyMonitor:
 class ClockDriftMonitor:
     name: str
     window: int = 1_000
-    warn_ns: int = 1_000_000
-    critical_ns: int = 10_000_000
+    # Defaults aligned to the signed spec: critical_ns is the halt-new-entries
+    # threshold (250 ms). Operational early-warning is at 10 ms. Stricter
+    # operational thresholds require Director Sponsor and Risk Reviewer
+    # approval recorded in configs/risk_limits.yml notes.
+    warn_ns: int = 10_000_000          # 10ms
+    critical_ns: int = 250_000_000     # 250ms — spec halt threshold
     samples: Deque[int] = field(default_factory=deque, init=False)
     alerts: list[MonitorAlert] = field(default_factory=list, init=False)
 

@@ -5,14 +5,19 @@
 engineering and quant (v1.0 independence rule). Names below are placeholders
 and **must be filled before any code is merged to the spec-named branch.**
 
-| Workstream                                            | Owner   | Backup  |
-| ----------------------------------------------------- | ------- | ------- |
-| Engineering — data + engine                           | TBD-ENG | TBD-ENG |
-| Quant — baselines + validation harness                | TBD-QNT | TBD-QNT |
-| Risk reviewer — contamination log + sign-off gate     | TBD-RSK | TBD-RSK |
-| Ops — broker / OCO confirmation + Appendix F          | TBD-OPS | TBD-OPS |
-| Legal — Appendix I scoping                            | TBD-LGL | TBD-LGL |
-| Director sponsor — capital/drawdown values + final approvals | TBD-DIR | TBD-DIR |
+Owner identifiers below are pseudonymous IDs (per Risk Reviewer guidance:
+not "TBD"). Each ID maps 1:1 to a single named individual whose mapping is
+held by the Director Sponsor and the Risk Reviewer separately. A backup ID
+is a different individual from the primary ID for the same workstream.
+
+| Workstream                                            | Owner    | Backup    |
+| ----------------------------------------------------- | -------- | --------- |
+| Engineering — data + engine                           | ENG-01   | ENG-02    |
+| Quant — baselines + validation harness                | QUANT-01 | QUANT-02  |
+| Risk reviewer — contamination log + sign-off gate     | RISK-01  | RISK-02   |
+| Ops — broker / OCO confirmation + Appendix F          | OPS-01   | OPS-02    |
+| Legal — Appendix I scoping                            | LEGAL-01 | LEGAL-02  |
+| Director sponsor — capital/drawdown values + final approvals | DIR-01   | DIR-02    |
 
 ## Independence rules
 

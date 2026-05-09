@@ -3,13 +3,15 @@
 Implements:
 
 - Market, limit, and stop order fills against a tick stream.
-- Stop trigger semantics: a stop is triggered when the trade tape **prints
-  through** the stop price (not on a quote that touches without trading).
-- Intrabar collision: when both stop-loss and target prints occur within the
-  same bar, the model resolves the order on tick-by-tick replay if available;
-  if only OHLC bar data is supplied, the model marks the bar with
-  ``ambiguous_collision=True`` and records the worst-case (stop-loss) outcome
-  per Appendix D.
+- Stop trigger semantics: conservative OR of trade-tape print-through and
+  BBO quote touch through the stop. A BUY stop triggers if last_trade >=
+  stop OR ask >= stop; a SELL stop triggers if last_trade <= stop OR
+  bid <= stop. The quote leg is optional (callers may pass quote=None for
+  trade-only contexts), but real ingestion is expected to supply both.
+- Intrabar collision: when both stop-loss and take-profit are reached
+  within the same bar and the underlying ticks cannot disambiguate
+  ordering, the model records the worst-case (stop-loss) outcome and
+  flags the result as ambiguous.
 
 Costs are deliberately placeholder values until the broker rate sheet
 arrives (errata §5). The constant ``D2_PLACEHOLDER_TAG`` is embedded in any
@@ -23,7 +25,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from ..bars import Bar
-from ..ingestion.types import Tick
+from ..ingestion.types import BBOQuote, Tick
 
 
 D2_PLACEHOLDER_TAG = "D2_PLACEHOLDER"
@@ -105,16 +107,44 @@ class FillModel:
             return self._make_result(True, intent.price, tick.ts_ns, intent.qty, ["limit"])
         return None
 
-    def stop_triggered(self, intent: OrderIntent, tick: Tick) -> bool:
+    def stop_triggered(
+        self, intent: OrderIntent, tick: Tick, quote: BBOQuote | None = None
+    ) -> bool:
+        """Conservative stop trigger: OR of trade-tape print-through and
+        BBO quote touch through the stop, per signed spec.
+
+        - BUY stop (covers a short): trigger if last_trade >= stop OR
+          ask >= stop.
+        - SELL stop (covers a long): trigger if last_trade <= stop OR
+          bid <= stop.
+
+        ``quote`` is optional: if not supplied, only the trade-tape leg is
+        evaluated. Real ingestion is expected to supply both via the merged
+        tick / BBO stream.
+        """
         if intent.type is not OrderType.STOP:
             raise FillModelError("stop_triggered requires OrderType.STOP")
         assert intent.price is not None
         if intent.side is OrderSide.BUY:
-            return tick.price >= intent.price
-        return tick.price <= intent.price
+            if tick.price >= intent.price:
+                return True
+            if quote is not None and quote.ask_px >= intent.price:
+                return True
+            return False
+        # SELL
+        if tick.price <= intent.price:
+            return True
+        if quote is not None and quote.bid_px <= intent.price:
+            return True
+        return False
 
-    def fill_stop_on_tick(self, intent: OrderIntent, tick: Tick) -> FillResult | None:
-        if not self.stop_triggered(intent, tick):
+    def fill_stop_on_tick(
+        self,
+        intent: OrderIntent,
+        tick: Tick,
+        quote: BBOQuote | None = None,
+    ) -> FillResult | None:
+        if not self.stop_triggered(intent, tick, quote=quote):
             return None
         slip = self._slip(intent.side)
         px = tick.price + slip

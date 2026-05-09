@@ -7,7 +7,7 @@ from algotrading.fillmodel import (
     OrderType,
     PlaceholderCosts,
 )
-from algotrading.ingestion.types import Tick
+from algotrading.ingestion.types import BBOQuote, Tick
 
 
 def _tick(ts_ns: int, price: int) -> Tick:
@@ -100,3 +100,29 @@ def test_costs_none_disables_placeholder_tag() -> None:
     res = fm.fill_market(OrderIntent(OrderSide.BUY, 1, OrderType.MARKET), _tick(100, 4500))
     assert res.cost_tag == ""
     assert not res.is_placeholder()
+
+
+def test_buy_stop_triggered_by_quote_when_trade_has_not_printed_through() -> None:
+    fm = FillModel()
+    intent = OrderIntent(OrderSide.BUY, 1, OrderType.STOP, price=4505)
+    tick = _tick(100, 4504)
+    quote = BBOQuote(ts_ns=100, symbol="MES", bid_px=4504, bid_sz=1, ask_px=4505, ask_sz=1)
+    assert not fm.stop_triggered(intent, tick)
+    assert fm.stop_triggered(intent, tick, quote=quote)
+
+
+def test_sell_stop_triggered_by_quote_when_trade_has_not_printed_through() -> None:
+    fm = FillModel()
+    intent = OrderIntent(OrderSide.SELL, 1, OrderType.STOP, price=4495)
+    tick = _tick(100, 4496)
+    quote = BBOQuote(ts_ns=100, symbol="MES", bid_px=4495, bid_sz=1, ask_px=4496, ask_sz=1)
+    assert not fm.stop_triggered(intent, tick)
+    assert fm.stop_triggered(intent, tick, quote=quote)
+
+
+def test_buy_stop_quote_not_through_does_not_trigger() -> None:
+    fm = FillModel()
+    intent = OrderIntent(OrderSide.BUY, 1, OrderType.STOP, price=4505)
+    tick = _tick(100, 4503)
+    quote = BBOQuote(ts_ns=100, symbol="MES", bid_px=4503, bid_sz=1, ask_px=4504, ask_sz=1)
+    assert not fm.stop_triggered(intent, tick, quote=quote)
