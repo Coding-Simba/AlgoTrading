@@ -1,0 +1,29 @@
+# MES session calendar — placeholder for unit-test scaffolding only.
+# Real calendar is locked per §C.9 once procurement returns the chosen
+# economic-calendar provider. Do not use this file for backtest-quality runs.
+
+timezone: "America/New_York"
+
+windows:
+  # 2026-05-11 (Mon) — regular RTH
+  - type: regular
+    label: "RTH 2026-05-11"
+    open:  "2026-05-11T09:30:00-04:00"
+    close: "2026-05-11T16:00:00-04:00"
+
+  # 2026-05-12 (Tue) — regular RTH
+  - type: regular
+    label: "RTH 2026-05-12"
+    open:  "2026-05-12T09:30:00-04:00"
+    close: "2026-05-12T16:00:00-04:00"
+
+  # Sample half-day (Black Friday-style early close)
+  - type: half_day
+    label: "Half-day sample"
+    open:  "2026-11-27T09:30:00-05:00"
+    close: "2026-11-27T13:00:00-05:00"
+
+  # Sample holiday (US Thanksgiving)
+  - type: holiday
+    label: "US Thanksgiving"
+    date:  "2026-11-26"

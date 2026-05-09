@@ -1,0 +1,20 @@
+# Data partition lock — §C.9.
+# These ranges become binding once filled and committed. Edits require a
+# Change Request. Until then the file holds placeholders that the
+# contamination guard treats as "not yet locked": any attempt to query the
+# `validation` partition while the lock is missing is rejected.
+
+locked: false   # set to true only when the Director Sponsor signs off.
+locked_by: ""
+locked_at_iso: ""
+
+partitions:
+  training:
+    start: ""    # ISO date, e.g., "2022-01-03"
+    end:   ""
+  validation:
+    start: ""
+    end:   ""
+  final_holdback:
+    start: ""
+    end:   ""
