@@ -13,8 +13,8 @@ the specification level. Once signed, the following are binding inputs to
 v0.2 strategy code and to any paper / live execution path, and may not be
 edited without a Change Request:
 
-- Order state-machine invariants (states, allowed transitions, terminal
-  states, partial-fill semantics).
+- **Strategy-level lifecycle** (per family / version): see §1.a.
+- **Order-level lifecycle** (per individual order): see §1.b.
 - Kill-switch behaviour: triggers, ordering of cancel / flatten actions,
   and post-trip recovery preconditions.
 - Reconnect / disconnect policy: what happens to working orders, OCO
@@ -26,6 +26,87 @@ edited without a Change Request:
   `configs/risk_limits.yml`).
 - Latency and clock-drift alert thresholds (warn / critical), aligned with
   `LatencyMonitor` and `ClockDriftMonitor` defaults.
+
+### 1.a Strategy-level lifecycle
+
+The strategy lifecycle is the operational state of a strategy
+*version* in the engine. It is distinct from, and outer to, the order
+lifecycle below. One strategy can emit many orders; one strategy
+transition (e.g., `STANDBY -> ACTIVE`) does not in itself produce an
+order event.
+
+States:
+
+- `REGISTERED` — `StrategyRegistry` entry exists; engine has loaded
+  rules; no engine attachment yet.
+- `STANDBY` — engine attached, kill-switch armed, **not** emitting
+  intents. This is the default in pre-market and after a kill-switch
+  trip.
+- `ACTIVE` — emitting intents subject to risk-limit caps; pre-conditions
+  per `configs/signoff_matrix.yml` for the current gate satisfied.
+- `PAUSED` — soft-tripwire hit (per §2.4 of `live_runbook_draft.md`);
+  exits and stop adjustments allowed; no new entries.
+- `ERROR_HALTED` — hard-tripwire or operator trip; orders cancelled and
+  positions flattened per §H kill-switch sequence; no new orders until
+  the post-incident review signs off.
+- `RETIRED` — terminal: the strategy version is no longer eligible to
+  emit intents. Successor versions register as new entries per §B.13.
+
+Allowed transitions (other transitions raise an audit log entry and are
+refused):
+
+```
+REGISTERED -> STANDBY
+STANDBY    -> ACTIVE | RETIRED
+ACTIVE     -> PAUSED | ERROR_HALTED | STANDBY
+PAUSED     -> ACTIVE | STANDBY | ERROR_HALTED
+ERROR_HALTED -> STANDBY     (only after post-incident review sign-off)
+                  -> RETIRED      (review concludes the version is not
+                                   eligible to resume)
+```
+
+Each transition is recorded in the contamination log
+(`docs/research_contamination_log/README.md`) as `action_type=other`
+with `dataset_used=live` or `dataset_used=paper` per the gate the
+strategy is in. The transition row names the strategy version, the
+prior state, the new state, and the trigger (operator id, monitor
+alert id, or sign-off PR number).
+
+### 1.b Order-level lifecycle
+
+The order lifecycle is the state of a single order in the engine and
+at the broker. It is implemented by
+`src/algotrading/orders/state_machine.py`. States:
+
+```
+NEW -> PENDING_NEW -> WORKING -> [PARTIAL_FILL] -> FILLED
+                              -> CANCELED
+                              -> REJECTED
+                              -> EXPIRED
+```
+
+Terminal set: `{FILLED, CANCELED, REJECTED, EXPIRED}`. No transition
+out of a terminal state. Partial-fill accounting per
+`OrderStateMachine.fill`: rejects qty <= 0, rejects qty > remaining,
+advances `qty_filled`, transitions to `FILLED` only when
+`qty_filled == qty_total`.
+
+### 1.c Lifecycle separation rule
+
+The two lifecycles are independent:
+
+- A strategy in `STANDBY` may have working orders to which it is no
+  longer reacting; those orders complete or cancel under the order
+  lifecycle. The strategy does **not** transition back to `ACTIVE`
+  because of an order event.
+- A strategy in `ACTIVE` may have zero working orders at any moment;
+  this is normal, not a state change.
+- A strategy `ERROR_HALTED` immediately drives all of its working
+  orders to `CANCELED` (cancel-all then flatten); the order
+  transitions are recorded in the order lifecycle, the strategy
+  transition is recorded separately.
+- The contamination log records both: the strategy transition (one
+  row) and any non-trivial order transitions resulting from it.
 
 This appendix sits alongside Appendix F (broker integration / OCO
 finalization). H is the internal control surface; F is the broker-facing
@@ -74,8 +155,10 @@ counsel sign-off (per `docs/GATES.md`; errata §4).
 - `src/algotrading/monitoring/latency.py` —
   - `LatencyMonitor` (warn 50ms, critical 250ms by default; rolling
     p50 / p95 / p99 via `percentile`).
-  - `ClockDriftMonitor` (warn 1ms, critical 10ms by default; rolling
-    mean).
+  - `ClockDriftMonitor` (warn 10ms, critical 250ms by default; rolling
+    mean). The critical threshold is aligned with the spec halt-new-
+    entries rule; stricter operational thresholds require Director /
+    Risk approval recorded in `configs/risk_limits.yml` notes.
   - `MonitorAlert` severities: `info` | `warn` | `critical`.
 - `src/algotrading/fillmodel/model.py` — produces fills consumed here.
 - `tests/test_orders.py`, `tests/test_monitoring.py`,
@@ -136,7 +219,9 @@ box. Unchecked items block the signature.
         50ms`, `critical_ns = 250ms`) match the values written in this
         appendix, or this appendix explicitly overrides them with
         documented justification. Same check for `ClockDriftMonitor`
-        (`warn_ns = 1ms`, `critical_ns = 10ms`).
+        (`warn_ns = 10ms`, `critical_ns = 250ms` — spec halt threshold).
+        Stricter operational thresholds require Director / Risk approval
+        recorded in `configs/risk_limits.yml` notes.
 12. [ ] Negative latency (`local_ns < exchange_ns`) is treated as
         `critical` (clock skew or feed corruption). The reviewer has
         confirmed the branch in `LatencyMonitor.observe`.
