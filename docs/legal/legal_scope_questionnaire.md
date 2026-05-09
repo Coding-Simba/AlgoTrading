@@ -3,9 +3,18 @@
 **Purpose:** Provide engaged counsel a structured questionnaire to confirm the
 scope of the systematic trading program for purposes of Appendix I sign-off.
 
-**Status:** Scoping input only. This document poses questions; it does not
-state legal positions, conclusions, or interpretations. All determinations are
-reserved to engaged counsel.
+**Status:** Scope note only for current internal / personal trading
+use. Not a pre-code, pre-paper, or pre-live blocker under current
+scope. This questionnaire is reactivated only on a scope-expansion
+trigger (client / outside / pooled capital, paid signals, paid advice,
+copy-trading, public performance marketing, managed accounts).
+
+**Trigger:** Legal review becomes mandatory if project scope expands
+beyond internal / personal owner capital.
+
+This document poses questions; it does not state legal positions,
+conclusions, or interpretations. All determinations are reserved to
+engaged counsel.
 
 **Issued:** 2026-05-09
 **Owner:** Legal — Appendix I scoping (per `docs/OWNERS.md`)

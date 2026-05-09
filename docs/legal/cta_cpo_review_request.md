@@ -5,8 +5,17 @@ below implicates Commodity Trading Advisor (CTA) or Commodity Pool Operator
 (CPO) registration topics, and what facts or thresholds would change the
 analysis.
 
-**Status:** Scoping request only. This document does not assert a legal
-position. All determinations are reserved to engaged counsel.
+**Status:** Scope note only for current internal / personal trading
+use. Not a pre-code, pre-paper, or pre-live blocker under current
+scope. This request is reactivated only on a scope-expansion trigger
+(client / outside / pooled capital, paid signals, paid advice,
+copy-trading, public performance marketing, managed accounts).
+
+**Trigger:** Legal review becomes mandatory if project scope expands
+beyond internal / personal owner capital.
+
+This document does not assert a legal position. All determinations are
+reserved to engaged counsel.
 
 **Issued:** 2026-05-09
 **Owner:** Legal — Appendix I scoping (per `docs/OWNERS.md`)

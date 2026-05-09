@@ -43,9 +43,11 @@ Signer role: Risk Reviewer.
 
 1. [ ] Confirm `configs/data_partitions.yml` has non-empty start/end ISO
        dates for training, validation, and final_holdback (cite
-       `src/algotrading/contamination/enforcement.py:is_partition_lock_signed`).
+       `src/algotrading/contamination/enforcement.py:is_partition_lock_signed`,
+       which iterates `("training", "validation", "final_holdback")`).
 2. [ ] Confirm the three partitions do not overlap (validate by date
-       arithmetic; final_holdback.start > validation.end > training.end).
+       arithmetic; final_holdback.start > validation.end >
+       training.end).
 3. [ ] Confirm the contamination log header matches the documented schema
        (cite `src/algotrading/contamination/log.py:HEADER` and
        `docs/research_contamination_log/README.md` field table).
@@ -160,15 +162,19 @@ check the reviewer performs **before** the Director Sponsor signs.
        `risk_of_ruin_threshold_pct`.
 2. [ ] Confirm `daily_loss_limit_usd` is strictly less than
        `aggregate_program_drawdown_limit_pct * allocated_capital_usd /
-       100`.
+       100` (a single-session loss cannot saturate the program-level
+       drawdown limit).
 3. [ ] Confirm `max_oos_drawdown_pct <=
-       aggregate_program_drawdown_limit_pct`.
+       aggregate_program_drawdown_limit_pct` (the OOS gate cannot be
+       looser than the program ceiling).
 4. [ ] Confirm `risk_of_ruin_threshold_pct` is consistent with
        `allocated_capital_usd` and `aggregate_program_drawdown_limit_pct`
-       — the analytical ROR computed from the proposed sizing rule at the
-       planned losing-streak length lies under the threshold.
+       — i.e., the analytical ROR computed from the proposed sizing rule
+       at the planned losing-streak length lies under the threshold.
 5. [ ] Confirm `max_acceptable_losing_streak` is consistent with the
-       position-sizing rule.
+       position-sizing rule: the worst loss-streak path under the rule
+       does not breach `aggregate_program_drawdown_limit_pct` before the
+       streak hits this length.
 6. [ ] Confirm `signed_by` differs from the Risk Reviewer named in
        `docs/OWNERS.md` (independence rule).
 7. [ ] Confirm `signed_at_iso` is ISO-8601 with timezone offset, and
@@ -177,47 +183,64 @@ check the reviewer performs **before** the Director Sponsor signs.
 ## 7. Three-partition date ranges
 
 1. [ ] Confirm no overlap between training, validation, and
-       final_holdback ranges.
+       final_holdback ranges (chronological, contiguous, or with
+       documented gaps; never overlapping).
 2. [ ] Confirm the final_holdback range is wide enough to meet the
        trade-count requirement documented in
        `docs/appendices/E_quant_gates.md` §5 under expected per-day trade
        rates for the v0.2 family.
-3. [ ] Confirm MES history depth from the primary vendor reply actually
-       covers the chosen training start date. If MES history is
-       insufficient, confirm the ES-proxy rule is invoked.
+3. [ ] Confirm MES history depth from the primary vendor reply (file in
+       `docs/vendor-replies/`) actually covers the chosen training start
+       date. If MES history is insufficient, confirm the ES-proxy rule is
+       invoked: training/validation may use ES as a proxy with explicit
+       documentation in the contamination log; final_holdback **must**
+       use MES.
 4. [ ] Confirm `locked: true`, `locked_by`, and `locked_at_iso` are
        populated and that
        `src/algotrading/contamination/enforcement.py:is_partition_lock_signed`
-       returns True for the file.
+       returns True for the file (run the function or rely on the test
+       at `tests/test_contamination.py:test_signed_lock_with_freeze_event_allows`
+       as the integration witness).
 5. [ ] Confirm the §B.13 registry-first ack is recorded in the Appendix
-       B sign-off block.
+       B sign-off block, and that no v0.2 OOS query is logged in the
+       contamination log prior to v0.2 registration in
+       `src/algotrading/registry/registry.py`.
 
 ## 8. Decline conditions (mandatory)
 
 The reviewer **must decline to sign** if any of the following are true:
 
-1. Any field in `configs/data_partitions.yml` is still a placeholder.
+1. Any field in `configs/data_partitions.yml` is still a placeholder
+   (empty string, `""`, or absent date).
 2. Any field in `configs/risk_limits.yml` is empty or `locked: false`.
 3. Any approved backtest output, research report, or pass/fail
-   evaluation in the repo carries the literal `D2_PLACEHOLDER` marker.
+   evaluation in the repo carries the literal `D2_PLACEHOLDER` marker
+   (errata §5).
 4. The Risk Reviewer named in `docs/OWNERS.md` also appears as the
-   Engineering, Quant, or Director Sponsor on this family.
+   Engineering, Quant, or Director Sponsor on this family (independence
+   rule violated).
 5. Any v0.2 entry exists in the live strategy registry file before all
-   five appendix sign-off rows are `signed: true`.
+   five appendix sign-off rows in `configs/signoff_matrix.yml` are
+   `signed: true`.
 6. Any forbidden symbol detected by `tests/test_sprint1_freeze.py` is
    present in `src/`.
-7. External or client capital is in scope but Appendix I has not been
-   signed by Legal (errata §4).
+7. A scope-expansion trigger has fired (client / outside / pooled
+   capital, paid signals, paid advice, copy-trading, public marketing,
+   managed accounts) but counsel review under
+   `docs/appendices/I_legal_scope_note.md` has not been completed.
+   Internal-only scope itself does not require Appendix I review.
 8. The contamination log shows a `validation_query` event prior to the
    documented validation-freeze step.
 9. The §C.9 lock and the §B.13 registry-first rule have not both been
    acknowledged in writing on the sign-off PR.
-10. Any vendor reply file flags an unresolved data-quality risk that
-    affects the locked partition ranges.
+10. Any vendor reply file under `docs/vendor-replies/` flags an
+    unresolved data-quality risk that affects the locked partition
+    ranges (e.g., MES history shorter than training.start).
 
 If any decline condition fires, the reviewer leaves all signature blocks
-empty, records the reason in the contamination log as an `other` event,
-and notifies the Director Sponsor. The gate state remains "Now" and v0.2
-strategy code remains FORBIDDEN.
+in `docs/signoff/pre_code_signoff_packet.md` empty, records the reason in
+the contamination log as an `other` event, and notifies the Director
+Sponsor. The gate state remains "Now" and v0.2 strategy code remains
+FORBIDDEN.
 
 *End of pre-code reviewer checklist.*

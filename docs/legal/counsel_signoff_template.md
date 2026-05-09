@@ -3,11 +3,20 @@
 **Purpose:** Template for engaged counsel to record the Appendix I sign-off
 for the systematic trading program described in Build Plan v1.4-r1.
 
-**Status:** Template only. The fields below are to be completed by engaged
-counsel. The trading entity does not pre-populate the regulatory
-determination, the required actions, or the conditions fields. Director
-Sponsor and Risk Reviewer counter-acknowledgements are recorded after
-counsel completes the substantive fields.
+**Status:** Scope note only for current internal / personal trading
+use. Not a pre-code, pre-paper, or pre-live blocker under current
+scope. This template is reactivated only on a scope-expansion trigger
+(client / outside / pooled capital, paid signals, paid advice,
+copy-trading, public performance marketing, managed accounts).
+
+**Trigger:** Legal review becomes mandatory if project scope expands
+beyond internal / personal owner capital.
+
+The fields below are to be completed by engaged counsel **only when**
+the trigger above fires. The trading entity does not pre-populate the
+regulatory determination, the required actions, or the conditions
+fields. Director Sponsor and Risk Reviewer counter-acknowledgements are
+recorded after counsel completes the substantive fields.
 
 **Program reference:** Build Plan v1.4-r1; errata §4
 **Owner:** Legal — Appendix I scoping (per `docs/OWNERS.md`)

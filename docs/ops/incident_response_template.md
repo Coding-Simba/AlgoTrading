@@ -200,7 +200,10 @@ attachment slot rather than leaving it blank.
 
 ## Blocker note
 
-This template is **DRAFT**. Until the broker is selected, Appendix F is
-finalized, and Appendix I is signed, this template cannot be used to close
-out a real production incident — because no production trading is
-permitted. Paper trading is **BLOCKED** per `docs/GATES.md`.
+This template is **DRAFT**. Until the broker is selected and Appendix F
+is finalized, this template cannot be used to close out a real
+production incident — because no production trading is permitted.
+Paper trading is **BLOCKED** per `docs/GATES.md`. Appendix I is a
+scope-control note for internal-only scope (see
+`docs/appendices/I_legal_scope_note.md`); it is not part of the paper
+gate and is reactivated only on a scope-expansion trigger.
