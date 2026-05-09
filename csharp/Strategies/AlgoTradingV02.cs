@@ -27,8 +27,13 @@ using NinjaTrader.Data;
 using NinjaTrader.NinjaScript;
 using NinjaTrader.NinjaScript.Strategies;
 using AlgoTrading.Domain;
-using AlgoTrading.Indicators;
 using AlgoTrading.StrategyV02;
+// NT8's Strategy base class exposes EMA(int)/VWAP()/ATR() as indicator-
+// factory methods, which shadow our same-named static classes. Alias them
+// so we can call the ported pure-functional indicators without ambiguity.
+using PortedEMA = AlgoTrading.Indicators.EMA;
+using PortedSessionVWAP = AlgoTrading.Indicators.SessionVWAP;
+using PortedWilderATR = AlgoTrading.Indicators.WilderATR;
 #endregion
 
 namespace NinjaTrader.NinjaScript.Strategies
@@ -125,12 +130,12 @@ namespace NinjaTrader.NinjaScript.Strategies
             }
 
             // 5m indicators (computed on a tick-unit basis to match Python).
-            var ema200_5 = EMA.Compute(closes5, emaLongPeriod);
-            var ema20_5  = EMA.Compute(closes5, emaShortPeriod);
+            var ema200_5 = PortedEMA.Compute(closes5, emaLongPeriod);
+            var ema20_5  = PortedEMA.Compute(closes5, emaShortPeriod);
             // Session VWAP: for first-cut we treat the rolling window as one session.
             // Production wants a real session-start index from SessionCalendar.
-            var vwap_5   = SessionVWAP.Compute(closes5, volumes5, new[] { 0 });
-            var atr_5    = WilderATR.Compute(highs5, lows5, closes5, atrPeriod);
+            var vwap_5   = PortedSessionVWAP.Compute(closes5, volumes5, new[] { 0 });
+            var atr_5    = PortedWilderATR.Compute(highs5, lows5, closes5, atrPeriod);
 
             double? atrLast = atr_5[atr_5.Count - 1];
             if (!atrLast.HasValue || atrLast.Value <= 0) return;
@@ -140,8 +145,8 @@ namespace NinjaTrader.NinjaScript.Strategies
             var closes60 = new List<double>(n60);
             for (int btsIdx = n60 - 1; btsIdx >= 0; btsIdx--)
                 closes60.Add(Closes[1][btsIdx] / TickSize_Indices);
-            var ema60_50  = EMA.Compute(closes60, emaTrendShort);
-            var ema60_200 = EMA.Compute(closes60, emaTrendLong);
+            var ema60_50  = PortedEMA.Compute(closes60, emaTrendShort);
+            var ema60_200 = PortedEMA.Compute(closes60, emaTrendLong);
             double? e50  = ema60_50 [ema60_50.Count  - 1];
             double? e200 = ema60_200[ema60_200.Count - 1];
             if (!e50.HasValue || !e200.HasValue) return;
