@@ -4,7 +4,7 @@
 # strategy code lands; phase-gate rows are signed at each subsequent phase.
 #
 # signer_role values mirror docs/OWNERS.md.
-# required_for ∈ {v0.2_code, v0.2_backtest, validation, paper, live, scaleup}
+# required_for ∈ {v0.2_code, v0.2_backtest, validation, paper, live, scaleup, scope_expansion}
 # signed_at_iso must be ISO-8601 (e.g., "2026-05-09T10:00:00-04:00").
 
 rows:
@@ -72,13 +72,13 @@ rows:
     notes: ""
 
   - id: "I"
-    title: "Appendix I — counsel sign-off (capital scope)"
-    signer_role: "Legal"
-    required_for: "paper"
+    title: "Appendix I — legal scope note (internal-only)"
+    signer_role: "Director sponsor"
+    required_for: "scope_expansion"
     signed: false
     signed_by: ""
     signed_at_iso: ""
-    notes: "Required before paper or live trading; see errata §4."
+    notes: "Scope-control note for internal-only scope (see docs/appendices/I_legal_scope_note.md). Does not gate paper or internal live trading. Becomes mandatory only on a scope-expansion trigger (client / outside / pooled capital, paid signals, paid advice, copy-trading, public marketing, managed accounts)."
 
   - id: "validation_freeze"
     title: "Validation freeze (Week 3)"

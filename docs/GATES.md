@@ -7,7 +7,7 @@
 | Approved v0.2 backtest      | Research-report-quality backtest runs              | Broker rate sheet replaces §D.2 placeholders                    |
 | Validation / OOS query      | One-shot OOS test per strategy version             | Validation freeze (Week 3)                                      |
 | Family final-holdback query | Family-level approval                              | OOS pass + holdback partition trade-count threshold met         |
-| Paper trading               | Paper-account live execution                       | Appendix F finalized for chosen broker + Appendix I counsel sign-off |
+| Paper trading               | Paper-account live execution                       | Appendix F finalized for chosen broker (Appendix I is a scope-control note for internal-only scope; see §I) |
 | Small-size live             | Real capital at minimum size                       | Paper gate per §E.3                                             |
 | Scale-up                    | Size > 1 MES                                       | Appendix G signed off                                           |
 
@@ -17,13 +17,20 @@ The FROZEN status applies to: Appendix B, C, D (with placeholder note), E, H.
 Subsequent gates are signed at each phase; their unsigned state does not
 unfreeze the document and does not block framework engineering.
 
-## Appendix I (errata §4)
+## Appendix I (scope note — internal-only)
 
-- Required before paper or live trading.
-- Not required before v0.2 strategy code, **provided** the capital base is
-  internal-proprietary only.
-- If external / client capital enters scope before strategy code, Appendix I
-  becomes a coding prerequisite.
+This project is an in-house / personal trading bot using owner capital
+only. Per `docs/appendices/I_legal_scope_note.md`:
+
+- Counsel review is **not** required for internal testing, paper, or
+  live trading under the current scope.
+- Counsel review is **mandatory** before any scope expansion involving
+  client / outside / pooled capital, paid signals, paid advice,
+  copy-trading, public performance marketing, or managed accounts.
+- The scope-expansion templates remain available under `docs/legal/`
+  (`legal_scope_questionnaire.md`, `cta_cpo_review_request.md`,
+  `counsel_signoff_template.md`); they are not part of the
+  internal-only gate set.
 
 ## Broker rate sheet (errata §5)
 
