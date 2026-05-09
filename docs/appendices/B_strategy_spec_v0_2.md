@@ -1,131 +1,266 @@
-# Appendix B — Strategy Spec v0.2 (sign-off template)
+# Appendix B — Strategy Spec v0.2
 
-**Status:** Pre-code sign-off. Empty until signed; signed copies are committed
-via PR.
-**Frozen by:** errata §3 (pre-code sign-off rows are FROZEN).
-**Canonical rule reference:** §B.13 — registry-first registration is the
-controlling rule for any future v0.3 OOS / holdback claim. See errata §6.
+**Status:** Pre-code sign-off candidate
+**Scope:** v0.2 raw signal test only
+**Strategy family:** Trend-Pullback-Continuation
+**Instrument:** MES
+**Session:** CME RTH only
+**No regime filter in v0.2.**
+**No optimization.**
+**No chart inspection.**
+**No backtest before broker costs are inserted.**
+**No OOS before validation freeze.**
 
 ---
 
-## 1. Scope of this sign-off
+## B.1 Purpose
 
-This appendix locks the **v0.2 strategy specification** at the rule level.
-Once signed, the following are binding inputs to v0.2 strategy code and may
-not be edited without a Change Request:
+This appendix is the canonical pre-code strategy specification for v0.2.
+Engineering may implement only the rules stated here. If any
+implementation detail is not stated here, it is not approved.
 
-- The B.7 / B.8 entry rules (definition, not implementation).
-- Indicator definitions used by v0.2: EMA, VWAP, ATR — windows, anchoring,
-  reset semantics, and tick / bar input source.
-- Intended timeframes (5m primary, 60m context per §B.5).
-- Session windows used for entry / exit / forced-flatten decisions.
-- No-trade rules (event blackouts, half-day handling, illiquid windows).
-- The registry-first rule of §B.13 as canonical.
+## B.2 Instrument and session
 
-Indicators and entry rules are **spec items**: they are signed off here even
-though no v0.2 code yet implements them (Sprint 1 freeze, errata §3, §9).
+- Instrument: CME Micro E-mini S&P 500 futures, MES
+- Contract: front-month, rolled per Appendix C
+- Session: US Regular Trading Hours only
+- Timezone: America/New_York
+- Earliest signal-bar close: 10:35:00 ET
+- Latest signal-bar close: 15:30:00 ET
+- Forced flat time: 15:58:00 ET
+- Half-days: no trading
+- Max trades per RTH session: 3
+- One open position maximum
 
-## 2. What this sign-off unblocks
+## B.3 Bar timing
 
-Per `docs/GATES.md`:
+A bar labeled `T_close` contains ticks:
 
-- The `v0.2 strategy code` gate. Together with C, D, E, H, signing this row
-  permits implementation of B.7 / B.8 in `src/algotrading/strategies/` (not
-  yet created).
+```text
+T_open <= tick_timestamp < T_close
+```
 
-This sign-off does **not** unblock approved v0.2 backtests. That gate
-additionally requires the broker rate sheet to replace `D2_PLACEHOLDER`
-costs (errata §5).
+The tick at exactly `T_close` belongs to the next bar.
 
-## 3. Dependencies on other appendices
+The signal bar is included in calculations at `T_close` because all its
+ticks are strictly before `T_close`.
 
-- **Appendix C** (data + partitions): the v0.2 spec is meaningless without a
-  locked partition file. Reviewer must confirm `configs/data_partitions.yml`
-  is on track to be locked before any v0.2 query runs.
-- **Appendix D** (fill model): execution semantics in B.7 / B.8 (stop
-  triggers, bracket behaviour) must be consistent with the print-through and
-  intrabar collision rules in D.
-- **Appendix H** (ops): forced-flatten rules in this appendix must be
-  expressible by the order state machine in `src/algotrading/orders/`.
+Entry is attempted immediately at `T_close`, subject to latency gates.
 
-## 4. Source modules and tests referenced
+## B.4 60-minute RTH bars
 
-- `src/algotrading/registry/registry.py` — `StrategyRegistry`, append-only,
-  hash-addressed entries. §B.13 enforcement point.
-- `src/algotrading/calendar/calendar.py` — session windows used by no-trade
-  and forced-flatten rules.
-- `src/algotrading/bars/bars.py` — 5m / 60m bar boundaries (§B.5).
-- `configs/sessions/mes.yml` — placeholder calendar; real calendar lands
-  with the procurement reply (`docs/PROCUREMENT.md`).
-- `tests/test_registry.py`, `tests/test_calendar.py`, `tests/test_bars.py`.
+Use these 60-minute RTH bars:
 
-## 5. Review checklist
+```text
+[09:30, 10:30)
+[10:30, 11:30)
+[11:30, 12:30)
+[12:30, 13:30)
+[13:30, 14:30)
+[14:30, 15:30)
+```
 
-The signer must verify each item below by direct inspection (not by
-asking the author). Initial each box. Unchecked items block the signature.
+Discard:
 
-1. [ ] B.7 entry rule is fully specified: trigger condition, side
-       determination, order type, price reference, time-in-force, and the
-       set of input bars (5m primary vs 60m context per §B.5) are each
-       written down with no "TBD" tokens.
-2. [ ] B.8 entry rule is fully specified to the same bar above. If B.8 is a
-       variant of B.7, the diff is stated explicitly (which fields differ
-       and which are inherited).
-3. [ ] EMA definition: window length, price input (close vs typical),
-       seeding rule for the first N bars, and behaviour across session
-       boundaries (carry vs reset) are written down.
-4. [ ] VWAP definition: anchoring point (session open vs rolling), reset
-       rule on session close, and tick-vs-bar input source are written
-       down.
-5. [ ] ATR definition: period, true-range formula, and behaviour at the
-       first bar of a session (with no prior close) are written down.
-6. [ ] Session windows for entry, exit, and forced-flatten are specified by
-       reference to `configs/sessions/mes.yml` schema (regular, half_day,
-       holiday, overnight). Half-day and holiday handling is explicit, not
-       implied.
-7. [ ] No-trade rules enumerate: scheduled economic releases (with lead /
-       lag minutes), open / close avoidance windows, and any liquidity
-       filter. Each rule names the data source it depends on.
-8. [ ] Forced-flatten timing is specified to the second relative to the
-       session close, and is consistent with
-       `SessionCalendar.next_close_after`.
-9. [ ] §B.13 registry-first rule is acknowledged in writing: the v0.2
-       strategy version string is named, and the spec states that any v0.3
-       must be appended to `StrategyRegistry` before any v0.2 OOS query is
-       run if the v0.2 OOS partition is to remain clean for v0.3
-       (errata §6).
-10. [ ] The spec contains **no** numeric values that depend on broker costs;
-        any cost-sensitive parameter (e.g., minimum-edge filter) is flagged
-        for re-derivation once the broker rate sheet replaces the §D.2
-        placeholder (errata §5).
-11. [ ] The spec contains **no** queries against the validation or
-        final-holdback partitions, even illustratively. All examples cite
-        the training partition only.
-12. [ ] No B.7 / B.8 logic is present anywhere under `src/algotrading/` at
-        the time of signing (Sprint 1 freeze; errata §3, §9).
-13. [ ] A v0.2 registry entry will be appended to
-        `StrategyRegistry` (`src/algotrading/registry/registry.py`)
-        immediately before the first line of v0.2 code is written, and
-        that requirement is stated in this spec.
-14. [ ] Capital and per-trade risk values used in any worked example are
-        supplied by the Director Sponsor (per `docs/OWNERS.md`), not chosen
-        by the strategy owner.
+```text
+[15:30, 16:00)
+```
 
-## 6. Sign-off block
+Do not carry the partial bar into the next session.
 
-Empty by default. To sign, fill the row, commit on a branch, and open a PR
-labelled `signoff-appendix-b`. The Risk Reviewer must independently
-acknowledge the PR (independence rule, `docs/OWNERS.md`).
+## B.5 Indicators
 
-| Field          | Value |
-| -------------- | ----- |
-| Signer name    |       |
-| Role           |       |
-| Date (ISO-8601)|       |
-| Notes          |       |
+Use only these definitions:
 
-Allowed roles for this appendix (per `docs/OWNERS.md`):
+- Standard EMA: `alpha = 2 / (N + 1)`, seeded with simple average of
+  first N closed bars.
+- Wilder ATR: `alpha = 1 / N`, period 14, on 5-minute bars.
+- 60m EMA50
+- 60m EMA200
+- 5m EMA200
+- 5m EMA20
+- 5m ATR(14)
+- Session VWAP from raw tick prints:
+  `sum(price * volume) / sum(volume)`, reset at 09:30 ET.
 
-- Quant — baselines + validation harness (primary)
-- Director sponsor (capital / risk values referenced in §5 item 14)
-- Risk reviewer (independence ack, separate PR comment, not a co-signer)
+VWAP approximation from 5m bars disqualifies clean approval.
+
+## B.6 Long entry rules
+
+Evaluate at `T_close`.
+
+A long signal is valid only if all conditions are true:
+
+1. `10:35:00 ET <= T_close <= 15:30:00 ET`
+2. Most recently closed 60m RTH bar exists and is from the current
+   session.
+3. On that 60m bar:
+   - `EMA50 > EMA200`
+   - `60m close > EMA200`
+4. On the 5m signal bar:
+   - `5m close > 5m EMA200`
+5. Pullback occurred within the last 3 closed 5m bars, including the
+   signal bar:
+   - at least one bar low touched or crossed below 5m EMA20 OR session
+     VWAP.
+6. Continuation trigger:
+   - signal-bar close is strictly greater than the high of the
+     immediately preceding 5m bar.
+7. No open position.
+8. No more than 2 prior trades entered in the current RTH session.
+9. No active no-trade condition.
+10. Latency gates pass.
+
+### Long stop and target
+
+At decision time:
+
+```text
+expected_entry  = current ask + modeled slippage
+candidate_stop  = lowest low of the 3-bar pullback window - 1 tick
+candidate_R     = expected_entry - candidate_stop
+```
+
+Skip if:
+
+```text
+candidate_R > 1.5 * ATR(14)
+candidate_R < 0.5 * ATR(14)
+candidate_R <= 0
+```
+
+On actual fill:
+
+```text
+actual_R = actual_entry_fill - stop_price
+target   = actual_entry_fill + 1.5 * actual_R
+```
+
+Target rounded **DOWN** to nearest valid tick.
+
+If `actual_R <= 0`, transition to `ERROR_HALTED`.
+
+## B.7 Short entry rules
+
+Exact mirror of long.
+
+A short signal is valid only if all conditions are true:
+
+1. `10:35:00 ET <= T_close <= 15:30:00 ET`
+2. Most recently closed 60m RTH bar exists and is from the current
+   session.
+3. On that 60m bar:
+   - `EMA50 < EMA200`
+   - `60m close < EMA200`
+4. On the 5m signal bar:
+   - `5m close < 5m EMA200`
+5. Pullback occurred within the last 3 closed 5m bars, including the
+   signal bar:
+   - at least one bar high touched or crossed above 5m EMA20 OR
+     session VWAP.
+6. Continuation trigger:
+   - signal-bar close is strictly less than the low of the immediately
+     preceding 5m bar.
+7. No open position.
+8. No more than 2 prior trades entered in the current RTH session.
+9. No active no-trade condition.
+10. Latency gates pass.
+
+### Short stop and target
+
+At decision time:
+
+```text
+expected_entry  = current bid - modeled slippage
+candidate_stop  = highest high of the 3-bar pullback window + 1 tick
+candidate_R     = candidate_stop - expected_entry
+```
+
+Skip if:
+
+```text
+candidate_R > 1.5 * ATR(14)
+candidate_R < 0.5 * ATR(14)
+candidate_R <= 0
+```
+
+On actual fill:
+
+```text
+actual_R = stop_price - actual_entry_fill
+target   = actual_entry_fill - 1.5 * actual_R
+```
+
+Target rounded **UP** to nearest valid tick.
+
+If `actual_R <= 0`, transition to `ERROR_HALTED`.
+
+## B.8 No-trade conditions
+
+No entry if any condition is active:
+
+- outside 10:35–15:30 ET signal window
+- inside scheduled news blackout
+- position open within pre-news flatten window
+- bid/ask spread > 2 ticks
+- latest tick older than 3 seconds
+- missing BBO
+- locked or crossed book
+- broker connection degraded
+- exchange halt
+- limit-up / limit-down
+- clock drift > 250 ms
+- signal calculation latency > 2 seconds
+- signal-to-order submission latency > 3 seconds
+- order-state machine not `FLAT`
+- operational kill switch active
+
+## B.9 News flatten
+
+No position may be open at scheduled high-impact release time.
+
+Flatten times:
+
+- CPI, NFP, PPI, GDP, Retail Sales, ISM: flatten by T−12 minutes.
+- FOMC rate decision: flatten by T−32 minutes.
+- FOMC minutes: flatten by T−17 minutes.
+
+If flatten fails before release time, transition to `ERROR_HALTED`.
+
+## B.10 Forced session-end flatten
+
+At 15:58:00 ET:
+
+1. Halt new entries.
+2. Keep protective stop active.
+3. Submit market flatten order.
+4. Confirm broker position is flat.
+5. Cancel remaining OCO leg.
+6. If flat confirmation fails, retry once.
+7. If still not flat, transition to `ERROR_HALTED`.
+8. If position flips or broker / internal mismatch occurs, transition
+   to `ERROR_HALTED`.
+
+Cancel-first is allowed only through documented broker-native atomic
+flatten.
+
+## B.11 v0.3 family rule
+
+v0.3 may use the v0.2 OOS partition as clean validation only if v0.3
+rules were registered (in the strategy registry, per §B.13) **before**
+the v0.2 OOS query.
+
+If v0.3 is designed after seeing v0.2 OOS results, that OOS is
+contaminated and may be used only as a diagnostic comparison.
+
+Final holdback remains binding family-level validation.
+
+## B.12 Sign-off
+
+| Field                | Value |
+| -------------------- | ----- |
+| Signed               | false |
+| Director Sponsor     | DIR-01 |
+| Risk Reviewer        | RISK-01 |
+| Signed at ISO        | null |
+| Commit hash          | null |

@@ -2,30 +2,31 @@
 
 **Issued:** 2026-05-09 (Day 0)
 **Rule:** No unnamed workstreams. Risk reviewer must be independent of
-engineering and quant (v1.0 independence rule). Names below are placeholders
-and **must be filled before any code is merged to the spec-named branch.**
+engineering and quant (v1.0 independence rule).
 
-Owner identifiers below are pseudonymous IDs (per Risk Reviewer guidance:
-not "TBD"). Each ID maps 1:1 to a single named individual whose mapping is
-held by the Director Sponsor and the Risk Reviewer separately. A backup ID
-is a different individual from the primary ID for the same workstream.
+Public repo uses pseudonymous owner IDs for privacy. **These IDs are not
+placeholders.** The private real-name mapping is held off-repo by the
+Director Sponsor and Risk Reviewer. No real names are committed publicly.
 
-| Workstream                                            | Owner    | Backup    |
-| ----------------------------------------------------- | -------- | --------- |
-| Engineering — data + engine                           | ENG-01   | ENG-02    |
-| Quant — baselines + validation harness                | QUANT-01 | QUANT-02  |
-| Risk reviewer — contamination log + sign-off gate     | RISK-01  | RISK-02   |
-| Ops — broker / OCO confirmation + Appendix F          | OPS-01   | OPS-02    |
-| Legal — Appendix I scoping                            | LEGAL-01 | LEGAL-02  |
-| Director sponsor — capital/drawdown values + final approvals | DIR-01   | DIR-02    |
+Risk-review independence is enforced by role ID. `RISK-*` may not also
+act as `ENG-*` or `QUANT-*` for the same approval gate.
+
+| Workstream                                            | Owner    | Backup           |
+| ----------------------------------------------------- | -------- | ---------------- |
+| Engineering — data + engine                           | ENG-01   | ENG-02-BACKUP    |
+| Quant — baselines + validation harness                | QUANT-01 | QUANT-02-BACKUP  |
+| Risk reviewer — contamination log + sign-off gate     | RISK-01  | RISK-02-BACKUP   |
+| Ops — broker / OCO confirmation + Appendix F          | OPS-01   | OPS-02-BACKUP    |
+| Legal scope note                                      | LEGAL-01 | LEGAL-02-BACKUP  |
+| Director sponsor — capital / drawdown values          | DIR-01   | DIR-02-BACKUP    |
 
 ## Independence rules
 
-- Risk reviewer **may not** also hold the Engineering, Quant, or Director
-  Sponsor role on the same family.
-- The Director Sponsor signs capital and drawdown values; Risk reviewer signs
-  the contamination log and the sign-off gate. These two signers must be
-  distinct individuals.
+- `RISK-*` may not also hold `ENG-*`, `QUANT-*`, or `DIR-*` on the same
+  family / approval gate.
+- The Director Sponsor (`DIR-*`) signs capital and drawdown values; the
+  Risk Reviewer (`RISK-*`) signs the contamination log and the sign-off
+  gate. These two roles must be distinct individuals.
 
 ## How to update this file
 
