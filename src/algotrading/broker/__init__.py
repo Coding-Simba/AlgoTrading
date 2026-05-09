@@ -1,5 +1,6 @@
 from .interface import BrokerAdapter, BrokerOrder, BrokerFill
 from .live_adapter import LiveBrokerAdapter, BlockedLiveTrading
+from .tradovate_adapter import TradovateAdapter
 
 __all__ = [
     "BrokerAdapter",
@@ -7,4 +8,5 @@ __all__ = [
     "BrokerFill",
     "LiveBrokerAdapter",
     "BlockedLiveTrading",
+    "TradovateAdapter",
 ]

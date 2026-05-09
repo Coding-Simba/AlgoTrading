@@ -1,0 +1,205 @@
+"""Loader and consistency tests for RateSheetCosts and the
+TradovateAdapter stub.
+
+These guard the seam between the unsigned-by-default rate sheet config
+and the cost model that consumes it. The adapter stub gets a single
+"refuses by default" canary so renaming the file or accidentally
+implementing it without removing the stub raises immediately.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from algotrading.broker import BlockedLiveTrading, TradovateAdapter
+from algotrading.broker.interface import BrokerOrder
+from algotrading.fillmodel import (
+    D2_PLACEHOLDER_TAG,
+    RateSheetCosts,
+    RateSheetError,
+    is_rate_sheet_signed,
+)
+
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_REAL_RATE_SHEET = _REPO_ROOT / "configs" / "broker_rate_sheet.yml"
+
+
+# ---------- Real-config canary --------------------------------------------
+
+
+def test_real_rate_sheet_exists_and_is_unsigned_today() -> None:
+    """The real config exists, parses as YAML, and is intentionally
+    unsigned. Flipping it to signed without an Ops PR review forces
+    this test to fail."""
+    assert _REAL_RATE_SHEET.exists(), f"missing {_REAL_RATE_SHEET}"
+    assert not is_rate_sheet_signed(_REAL_RATE_SHEET)
+    with pytest.raises(RateSheetError, match="not signed"):
+        RateSheetCosts.load(_REAL_RATE_SHEET, instrument="MES")
+
+
+# ---------- Signed-state acceptance ---------------------------------------
+
+
+_SIGNED_RATE_SHEET = """\
+meta:
+  broker: "NinjaTrader Brokerage"
+  api_route: "Tradovate REST/WebSocket"
+  plan: "free"
+  retrieved_at_iso: "2026-05-09"
+
+instruments:
+  MES:
+    name: "Micro E-mini S&P 500"
+    tick_size: 0.25
+    tick_value_usd_cents: 125
+    nt_commission_per_side_usd_cents: 39
+    cme_exchange_fee_per_side_usd_cents: 37
+    nfa_assessment_per_side_usd_cents: 2
+    clearing_fee_per_side_usd_cents: 6
+    routing_fee_per_side_usd_cents: 0
+    all_in_per_side_usd_cents: 84
+    all_in_round_trip_usd_cents: 168
+
+slippage:
+  ticks_per_side: 1
+
+signed_by: "OPS-01"
+signed_at_iso: "2026-05-09T10:00:00-04:00"
+signed: true
+"""
+
+
+@pytest.fixture
+def signed_rate_sheet(tmp_path: Path) -> Path:
+    p = tmp_path / "broker_rate_sheet.yml"
+    p.write_text(_SIGNED_RATE_SHEET, encoding="utf-8")
+    return p
+
+
+def test_rate_sheet_loads_and_emits_no_placeholder_tag(signed_rate_sheet: Path) -> None:
+    assert is_rate_sheet_signed(signed_rate_sheet)
+    rs = RateSheetCosts.load(signed_rate_sheet, instrument="MES")
+    assert rs.tag != D2_PLACEHOLDER_TAG
+    assert rs.tag == ""
+    assert rs.commission_per_side_usd_cents == 39
+    assert rs.all_in_per_side_usd_cents == 84
+    # 84 cents / 125 cents-per-tick → ceil(0.672) = 1 tick (conservative).
+    assert rs.commission_per_side_ticks == 1
+
+
+def test_rate_sheet_rejects_when_components_dont_sum(tmp_path: Path) -> None:
+    p = tmp_path / "rate.yml"
+    bad = _SIGNED_RATE_SHEET.replace(
+        "all_in_per_side_usd_cents: 84",
+        "all_in_per_side_usd_cents: 90",  # off by 6.
+    )
+    p.write_text(bad, encoding="utf-8")
+    with pytest.raises(RateSheetError, match="does not match"):
+        RateSheetCosts.load(p, instrument="MES")
+
+
+def test_rate_sheet_rejects_when_round_trip_not_double(tmp_path: Path) -> None:
+    p = tmp_path / "rate.yml"
+    bad = _SIGNED_RATE_SHEET.replace(
+        "all_in_round_trip_usd_cents: 168",
+        "all_in_round_trip_usd_cents: 170",  # not 2 × 84.
+    )
+    p.write_text(bad, encoding="utf-8")
+    with pytest.raises(RateSheetError, match="round_trip"):
+        RateSheetCosts.load(p, instrument="MES")
+
+
+def test_rate_sheet_rejects_when_signed_by_blank(tmp_path: Path) -> None:
+    p = tmp_path / "rate.yml"
+    bad = _SIGNED_RATE_SHEET.replace('signed_by: "OPS-01"', 'signed_by: ""')
+    p.write_text(bad, encoding="utf-8")
+    with pytest.raises(RateSheetError, match="signed_by"):
+        RateSheetCosts.load(p, instrument="MES")
+
+
+def test_rate_sheet_rejects_unknown_instrument(signed_rate_sheet: Path) -> None:
+    with pytest.raises(RateSheetError, match="MNQ"):
+        RateSheetCosts.load(signed_rate_sheet, instrument="MNQ")
+
+
+def test_is_rate_sheet_signed_handles_missing_file(tmp_path: Path) -> None:
+    assert not is_rate_sheet_signed(tmp_path / "nope.yml")
+
+
+# ---------- Tradovate adapter stub canaries -------------------------------
+
+
+def test_tradovate_adapter_refuses_submit_by_default() -> None:
+    """submit() runs `_gate()` first, which fails because the paper-gate
+    row is unsigned. That is the correct refusal order — even if every
+    gate were satisfied, the adapter would still raise on the
+    'not implemented' message below it."""
+    adapter = TradovateAdapter(repo_root=_REPO_ROOT, env="demo")
+    order = BrokerOrder(
+        client_order_id="probe",
+        symbol="MES",
+        side="buy",
+        qty=1,
+        order_type="market",
+        price=None,
+    )
+    with pytest.raises(BlockedLiveTrading):
+        adapter.submit(order)
+
+
+def test_tradovate_adapter_refuses_even_with_explicit_flag_alone() -> None:
+    """The flag alone cannot unblock the adapter — the gate enforces
+    the full six-condition check, and the implementation itself
+    refuses afterward."""
+    adapter = TradovateAdapter(
+        repo_root=_REPO_ROOT,
+        env="demo",
+        explicit_live_enable_flag=True,
+    )
+    with pytest.raises(BlockedLiveTrading):
+        adapter._gate()  # noqa: SLF001
+
+
+def test_tradovate_adapter_from_env_rejects_missing_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for v in (
+        "TRADOVATE_CLIENT_ID",
+        "TRADOVATE_CLIENT_SECRET",
+        "TRADOVATE_USERNAME",
+        "TRADOVATE_PASSWORD",
+        "TRADOVATE_APP_NAME",
+        "TRADOVATE_ENV",
+    ):
+        monkeypatch.delenv(v, raising=False)
+    with pytest.raises(BlockedLiveTrading, match="missing Tradovate"):
+        TradovateAdapter.from_env(repo_root=_REPO_ROOT)
+
+
+def test_tradovate_adapter_from_env_rejects_bad_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TRADOVATE_CLIENT_ID", "x")
+    monkeypatch.setenv("TRADOVATE_CLIENT_SECRET", "x")
+    monkeypatch.setenv("TRADOVATE_USERNAME", "x")
+    monkeypatch.setenv("TRADOVATE_PASSWORD", "x")
+    monkeypatch.setenv("TRADOVATE_APP_NAME", "x")
+    monkeypatch.setenv("TRADOVATE_ENV", "production")
+    with pytest.raises(BlockedLiveTrading, match="must be 'demo' or 'live'"):
+        TradovateAdapter.from_env(repo_root=_REPO_ROOT)
+
+
+def test_tradovate_adapter_from_env_demo_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TRADOVATE_CLIENT_ID", "x")
+    monkeypatch.setenv("TRADOVATE_CLIENT_SECRET", "x")
+    monkeypatch.setenv("TRADOVATE_USERNAME", "x")
+    monkeypatch.setenv("TRADOVATE_PASSWORD", "x")
+    monkeypatch.setenv("TRADOVATE_APP_NAME", "x")
+    monkeypatch.setenv("TRADOVATE_ENV", "demo")
+    adapter = TradovateAdapter.from_env(repo_root=_REPO_ROOT)
+    assert "demo.tradovateapi.com" in adapter.base_url()

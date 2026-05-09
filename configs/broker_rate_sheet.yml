@@ -1,0 +1,60 @@
+# Broker rate sheet — substitutes the §D.2 D2_PLACEHOLDER costs.
+#
+# Once `signed: true` and the `broker_rate_sheet` row in
+# `configs/signoff_matrix.yml` is also signed, `RateSheetCosts`
+# (src/algotrading/fillmodel/rate_sheet_costs.py) loads from this file
+# and produces fills WITHOUT the D2_PLACEHOLDER tag, unblocking
+# `approved_backtest`.
+#
+# UNTIL THIS FILE IS SIGNED, costs in approved backtests still come
+# from PlaceholderCosts (D2_PLACEHOLDER) and the gate refuses approved
+# backtests by design (errata §5).
+#
+# Source: NinjaTrader Brokerage published fee schedule.
+#   https://ninjatrader.com/PDF/ninjatrader_futures_commissions_free.pdf
+#   https://ninjatrader.com/pricing/account-fees/
+#
+# OPS responsibility before signing:
+#   - Verify every line item below against a *recent* NinjaTrader / Tradovate
+#     statement for the chosen account. Published rates can lag.
+#   - Confirm tier (`plan`) matches the account's actual plan.
+#   - Re-sign on any tier change.
+
+meta:
+  broker: "NinjaTrader Brokerage"          # parent brand; orders route via Tradovate post-2022.
+  api_route: "Tradovate REST/WebSocket"    # see docs/broker/ninjatrader_integration.md
+  plan: "free"                              # one of {free, monthly, lifetime}
+  retrieved_at_iso: "2026-05-09"
+  source_urls:
+    - "https://ninjatrader.com/PDF/ninjatrader_futures_commissions_free.pdf"
+    - "https://ninjatrader.com/pricing/account-fees/"
+  notes: |
+    Free-plan rates encoded. Lifetime License ($1,099 one-time) reduces
+    commission to $0.09/side; if the operator upgrades, this file MUST be
+    re-issued and re-signed. Switching tiers without re-signing is a CR
+    violation per errata §5.
+
+# Per-instrument fee schedule. Currency is USD throughout.
+# `tick_value_usd_cents` lets the cost model convert between USD-cents
+# and ticks without re-deriving instrument metadata.
+instruments:
+  MES:
+    name: "Micro E-mini S&P 500"
+    tick_size: 0.25
+    tick_value_usd_cents: 125            # $1.25 per tick.
+    nt_commission_per_side_usd_cents: 39  # $0.39/side (free plan).
+    cme_exchange_fee_per_side_usd_cents: 37  # CME MES exchange fee, individual rate.
+    nfa_assessment_per_side_usd_cents: 2     # NFA assessment.
+    clearing_fee_per_side_usd_cents: 6       # NT clearing fee approximation.
+    routing_fee_per_side_usd_cents: 0
+    all_in_per_side_usd_cents: 84            # MUST equal sum of the four lines above.
+    all_in_round_trip_usd_cents: 168         # MUST equal 2 * all_in_per_side.
+
+# Default slippage assumption. Conservative for retail-size MES; revise
+# after observed paper-trading slippage is captured.
+slippage:
+  ticks_per_side: 1                       # 1 tick = $1.25 on MES.
+
+signed_by: ""             # Ops identifier (must match docs/OWNERS.md role "Ops").
+signed_at_iso: ""         # ISO-8601 timestamp.
+signed: false             # set true only after Ops verifies vs. real statement.
