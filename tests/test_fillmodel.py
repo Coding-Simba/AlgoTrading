@@ -105,7 +105,7 @@ def test_costs_none_disables_placeholder_tag() -> None:
 def test_buy_stop_triggered_by_quote_when_trade_has_not_printed_through() -> None:
     fm = FillModel()
     intent = OrderIntent(OrderSide.BUY, 1, OrderType.STOP, price=4505)
-    tick = _tick(100, 4504)
+    tick = _tick(100, 4504)  # last trade below stop
     quote = BBOQuote(ts_ns=100, symbol="MES", bid_px=4504, bid_sz=1, ask_px=4505, ask_sz=1)
     assert not fm.stop_triggered(intent, tick)
     assert fm.stop_triggered(intent, tick, quote=quote)
@@ -114,7 +114,7 @@ def test_buy_stop_triggered_by_quote_when_trade_has_not_printed_through() -> Non
 def test_sell_stop_triggered_by_quote_when_trade_has_not_printed_through() -> None:
     fm = FillModel()
     intent = OrderIntent(OrderSide.SELL, 1, OrderType.STOP, price=4495)
-    tick = _tick(100, 4496)
+    tick = _tick(100, 4496)  # last trade above stop
     quote = BBOQuote(ts_ns=100, symbol="MES", bid_px=4495, bid_sz=1, ask_px=4496, ask_sz=1)
     assert not fm.stop_triggered(intent, tick)
     assert fm.stop_triggered(intent, tick, quote=quote)
@@ -126,3 +126,39 @@ def test_buy_stop_quote_not_through_does_not_trigger() -> None:
     tick = _tick(100, 4503)
     quote = BBOQuote(ts_ns=100, symbol="MES", bid_px=4503, bid_sz=1, ask_px=4504, ask_sz=1)
     assert not fm.stop_triggered(intent, tick, quote=quote)
+
+
+def test_buy_stop_does_not_trigger_when_both_legs_below_stop() -> None:
+    """Conservative-OR convention: BUY stop does not trigger if BOTH
+    last_trade < stop AND ask < stop."""
+    fm = FillModel()
+    intent = OrderIntent(OrderSide.BUY, 1, OrderType.STOP, price=4505)
+    tick = _tick(100, 4500)  # last_trade < stop
+    quote = BBOQuote(ts_ns=100, symbol="MES", bid_px=4499, bid_sz=1, ask_px=4500, ask_sz=1)  # ask < stop
+    assert not fm.stop_triggered(intent, tick, quote=quote)
+
+
+def test_sell_stop_does_not_trigger_when_both_legs_above_stop() -> None:
+    """Conservative-OR convention: SELL stop does not trigger if BOTH
+    last_trade > stop AND bid > stop."""
+    fm = FillModel()
+    intent = OrderIntent(OrderSide.SELL, 1, OrderType.STOP, price=4495)
+    tick = _tick(100, 4500)  # last_trade > stop
+    quote = BBOQuote(ts_ns=100, symbol="MES", bid_px=4499, bid_sz=1, ask_px=4500, ask_sz=1)  # bid > stop
+    assert not fm.stop_triggered(intent, tick, quote=quote)
+
+
+def test_buy_stop_quote_unavailable_falls_back_to_trade_leg() -> None:
+    fm = FillModel()
+    intent = OrderIntent(OrderSide.BUY, 1, OrderType.STOP, price=4505)
+    # No quote: trade-tape leg only. last_trade >= stop should trigger.
+    assert fm.stop_triggered(intent, _tick(100, 4505))
+    # last_trade below stop and no quote: no trigger.
+    assert not fm.stop_triggered(intent, _tick(101, 4504))
+
+
+def test_sell_stop_quote_unavailable_falls_back_to_trade_leg() -> None:
+    fm = FillModel()
+    intent = OrderIntent(OrderSide.SELL, 1, OrderType.STOP, price=4495)
+    assert fm.stop_triggered(intent, _tick(100, 4495))
+    assert not fm.stop_triggered(intent, _tick(101, 4496))
