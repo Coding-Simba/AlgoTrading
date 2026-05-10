@@ -1,10 +1,10 @@
 """Loader and consistency tests for RateSheetCosts and the
-TradovateAdapter stub.
+NinjaScriptBridgeAdapter stub.
 
 These guard the seam between the unsigned-by-default rate sheet config
-and the cost model that consumes it. The adapter stub gets a single
-"refuses by default" canary so renaming the file or accidentally
-implementing it without removing the stub raises immediately.
+and the cost model that consumes it. The adapter stub gets refusal
+canaries so renaming the file or accidentally implementing it without
+removing the stub raises immediately.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from algotrading.broker import BlockedLiveTrading, TradovateAdapter
+from algotrading.broker import BlockedLiveTrading, NinjaScriptBridgeAdapter
 from algotrading.broker.interface import BrokerOrder
 from algotrading.fillmodel import (
     D2_PLACEHOLDER_TAG,
@@ -46,7 +46,7 @@ def test_real_rate_sheet_exists_and_is_unsigned_today() -> None:
 _SIGNED_RATE_SHEET = """\
 meta:
   broker: "NinjaTrader Brokerage"
-  api_route: "Tradovate REST/WebSocket"
+  api_route: "NinjaScript localhost bridge"
   plan: "free"
   retrieved_at_iso: "2026-05-09"
 
@@ -129,15 +129,38 @@ def test_is_rate_sheet_signed_handles_missing_file(tmp_path: Path) -> None:
     assert not is_rate_sheet_signed(tmp_path / "nope.yml")
 
 
-# ---------- Tradovate adapter stub canaries -------------------------------
+# ---------- NinjaScript-bridge adapter stub canaries ----------------------
 
 
-def test_tradovate_adapter_refuses_submit_by_default() -> None:
+_BRIDGE_ENV_VARS = (
+    "NT_BRIDGE_HOST",
+    "NT_BRIDGE_PORT",
+    "NT_BRIDGE_TOKEN",
+    "NT_BRIDGE_ACCOUNT",
+    "NT_BRIDGE_ENV",
+)
+
+
+def _set_valid_bridge_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NT_BRIDGE_HOST", "127.0.0.1")
+    monkeypatch.setenv("NT_BRIDGE_PORT", "55555")
+    monkeypatch.setenv("NT_BRIDGE_TOKEN", "x" * 64)
+    monkeypatch.setenv("NT_BRIDGE_ACCOUNT", "Sim101")
+    monkeypatch.setenv("NT_BRIDGE_ENV", "sim")
+
+
+def test_bridge_adapter_refuses_submit_by_default() -> None:
     """submit() runs `_gate()` first, which fails because the paper-gate
     row is unsigned. That is the correct refusal order — even if every
-    gate were satisfied, the adapter would still raise on the
-    'not implemented' message below it."""
-    adapter = TradovateAdapter(repo_root=_REPO_ROOT, env="demo")
+    gate were satisfied, the adapter would still raise 'not implemented'
+    afterward."""
+    adapter = NinjaScriptBridgeAdapter(
+        repo_root=_REPO_ROOT,
+        host="127.0.0.1",
+        port=55555,
+        account="Sim101",
+        env="sim",
+    )
     order = BrokerOrder(
         client_order_id="probe",
         symbol="MES",
@@ -150,56 +173,69 @@ def test_tradovate_adapter_refuses_submit_by_default() -> None:
         adapter.submit(order)
 
 
-def test_tradovate_adapter_refuses_even_with_explicit_flag_alone() -> None:
-    """The flag alone cannot unblock the adapter — the gate enforces
-    the full six-condition check, and the implementation itself
-    refuses afterward."""
-    adapter = TradovateAdapter(
+def test_bridge_adapter_refuses_even_with_explicit_flag_alone() -> None:
+    adapter = NinjaScriptBridgeAdapter(
         repo_root=_REPO_ROOT,
-        env="demo",
+        host="127.0.0.1",
+        port=55555,
+        account="Sim101",
+        env="sim",
         explicit_live_enable_flag=True,
     )
     with pytest.raises(BlockedLiveTrading):
         adapter._gate()  # noqa: SLF001
 
 
-def test_tradovate_adapter_from_env_rejects_missing_credentials(
+def test_bridge_adapter_from_env_rejects_missing_credentials(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    for v in (
-        "TRADOVATE_CLIENT_ID",
-        "TRADOVATE_CLIENT_SECRET",
-        "TRADOVATE_USERNAME",
-        "TRADOVATE_PASSWORD",
-        "TRADOVATE_APP_NAME",
-        "TRADOVATE_ENV",
-    ):
+    for v in _BRIDGE_ENV_VARS:
         monkeypatch.delenv(v, raising=False)
-    with pytest.raises(BlockedLiveTrading, match="missing Tradovate"):
-        TradovateAdapter.from_env(repo_root=_REPO_ROOT)
+    with pytest.raises(BlockedLiveTrading, match="missing NinjaScript bridge"):
+        NinjaScriptBridgeAdapter.from_env(repo_root=_REPO_ROOT)
 
 
-def test_tradovate_adapter_from_env_rejects_bad_env(
+def test_bridge_adapter_from_env_rejects_non_loopback_host(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("TRADOVATE_CLIENT_ID", "x")
-    monkeypatch.setenv("TRADOVATE_CLIENT_SECRET", "x")
-    monkeypatch.setenv("TRADOVATE_USERNAME", "x")
-    monkeypatch.setenv("TRADOVATE_PASSWORD", "x")
-    monkeypatch.setenv("TRADOVATE_APP_NAME", "x")
-    monkeypatch.setenv("TRADOVATE_ENV", "production")
-    with pytest.raises(BlockedLiveTrading, match="must be 'demo' or 'live'"):
-        TradovateAdapter.from_env(repo_root=_REPO_ROOT)
+    _set_valid_bridge_env(monkeypatch)
+    monkeypatch.setenv("NT_BRIDGE_HOST", "10.0.0.5")
+    with pytest.raises(BlockedLiveTrading, match="must be loopback"):
+        NinjaScriptBridgeAdapter.from_env(repo_root=_REPO_ROOT)
 
 
-def test_tradovate_adapter_from_env_demo_url(
+def test_bridge_adapter_from_env_rejects_bad_port(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("TRADOVATE_CLIENT_ID", "x")
-    monkeypatch.setenv("TRADOVATE_CLIENT_SECRET", "x")
-    monkeypatch.setenv("TRADOVATE_USERNAME", "x")
-    monkeypatch.setenv("TRADOVATE_PASSWORD", "x")
-    monkeypatch.setenv("TRADOVATE_APP_NAME", "x")
-    monkeypatch.setenv("TRADOVATE_ENV", "demo")
-    adapter = TradovateAdapter.from_env(repo_root=_REPO_ROOT)
-    assert "demo.tradovateapi.com" in adapter.base_url()
+    _set_valid_bridge_env(monkeypatch)
+    monkeypatch.setenv("NT_BRIDGE_PORT", "80")  # privileged.
+    with pytest.raises(BlockedLiveTrading, match="1024-65535"):
+        NinjaScriptBridgeAdapter.from_env(repo_root=_REPO_ROOT)
+
+
+def test_bridge_adapter_from_env_rejects_non_integer_port(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_valid_bridge_env(monkeypatch)
+    monkeypatch.setenv("NT_BRIDGE_PORT", "not-a-number")
+    with pytest.raises(BlockedLiveTrading, match="must be an integer"):
+        NinjaScriptBridgeAdapter.from_env(repo_root=_REPO_ROOT)
+
+
+def test_bridge_adapter_from_env_rejects_bad_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_valid_bridge_env(monkeypatch)
+    monkeypatch.setenv("NT_BRIDGE_ENV", "production")
+    with pytest.raises(BlockedLiveTrading, match="must be 'sim' or 'live'"):
+        NinjaScriptBridgeAdapter.from_env(repo_root=_REPO_ROOT)
+
+
+def test_bridge_adapter_from_env_loopback_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_valid_bridge_env(monkeypatch)
+    adapter = NinjaScriptBridgeAdapter.from_env(repo_root=_REPO_ROOT)
+    assert adapter.base_url() == "tcp://127.0.0.1:55555"
+    assert adapter.account == "Sim101"
+    assert adapter.env == "sim"

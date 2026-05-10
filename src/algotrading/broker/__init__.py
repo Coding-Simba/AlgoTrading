@@ -1,6 +1,6 @@
 from .interface import BrokerAdapter, BrokerOrder, BrokerFill
 from .live_adapter import LiveBrokerAdapter, BlockedLiveTrading
-from .tradovate_adapter import TradovateAdapter
+from .ninjascript_bridge_adapter import NinjaScriptBridgeAdapter
 
 __all__ = [
     "BrokerAdapter",
@@ -8,5 +8,5 @@ __all__ = [
     "BrokerFill",
     "LiveBrokerAdapter",
     "BlockedLiveTrading",
-    "TradovateAdapter",
+    "NinjaScriptBridgeAdapter",
 ]

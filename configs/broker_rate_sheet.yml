@@ -21,8 +21,8 @@
 #   - Re-sign on any tier change.
 
 meta:
-  broker: "NinjaTrader Brokerage"          # parent brand; orders route via Tradovate post-2022.
-  api_route: "Tradovate REST/WebSocket"    # see docs/broker/ninjatrader_integration.md
+  broker: "NinjaTrader Brokerage"          # parent brand.
+  api_route: "NinjaScript localhost bridge" # see docs/broker/ninjatrader_integration.md
   plan: "free"                              # one of {free, monthly, lifetime}
   retrieved_at_iso: "2026-05-09"
   source_urls:
