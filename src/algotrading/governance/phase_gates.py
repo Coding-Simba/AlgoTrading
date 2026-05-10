@@ -58,6 +58,22 @@ def assert_pre_code_signed(ctx: GateContext) -> None:
         raise GateBlocked(f"pre-code sign-off incomplete: {exc}") from exc
 
 
+def assert_v03_code_unblocked(ctx: GateContext) -> None:
+    matrix = _safe_load_matrix(ctx)
+    try:
+        require_signed(matrix, gate="v0.3_code")
+    except SignoffError as exc:
+        raise GateBlocked(f"v0.3 code execution blocked: {exc}") from exc
+
+
+def assert_v04_code_unblocked(ctx: GateContext) -> None:
+    matrix = _safe_load_matrix(ctx)
+    try:
+        require_signed(matrix, gate="v0.4_code")
+    except SignoffError as exc:
+        raise GateBlocked(f"v0.4 code execution blocked: {exc}") from exc
+
+
 def assert_training_unblocked(ctx: GateContext) -> None:
     assert_pre_code_signed(ctx)
     if not is_partition_lock_signed(ctx.partitions_path):
@@ -193,6 +209,8 @@ def gate_summary(ctx: GateContext) -> dict[str, dict[str, object]]:
 
     for name, fn in (
         ("v0.2_code", lambda: assert_pre_code_signed(ctx)),
+        ("v0.3_code", lambda: assert_v03_code_unblocked(ctx)),
+        ("v0.4_code", lambda: assert_v04_code_unblocked(ctx)),
         (
             "approved_backtest",
             lambda: assert_approved_backtest_unblocked(

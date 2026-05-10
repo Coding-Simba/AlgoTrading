@@ -6,6 +6,10 @@ lands. Subsequent phase gates (broker rate sheet, Appendix F, validation
 freeze, paper, small-size live, Appendix G) are signed at later phases and
 are tracked in the same matrix so a single source of truth governs CI.
 
+Per CR-001, two additional code-level gates exist for v0.3 and v0.4
+(``v0.3_code`` and ``v0.4_code``); their corresponding matrix rows
+(``B_v0.3``, ``B_v0.4``) are added by the CR-001 apply script.
+
 The guard refuses by default. There is no override flag — bypassing it
 requires a Change Request reviewed by the Risk Reviewer.
 """
@@ -28,6 +32,8 @@ _VALID_GATES = (
     "live",
     "scaleup",
     "scope_expansion",
+    "v0.3_code",
+    "v0.4_code",
 )
 
 
